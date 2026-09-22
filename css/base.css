@@ -1,0 +1,68 @@
+/* Design tokens: official Capital SACCO palette */
+:root {
+  --navy: #12355B;
+  --teal: #0F766E;
+  --bg: #EEF4F8;
+  --white: #FFFFFF;
+  --teal-50: #E6F4F1;
+  --blue-50: #E8F1F8;
+  --text: #1F2937;
+  --text-2: #64748B;
+  --success: #15803D;
+  --warning: #D97706;
+  --error: #DC2626;
+
+  /* Derived from the palette */
+  --line: rgba(18, 53, 91, 0.14);
+  --line-soft: rgba(18, 53, 91, 0.08);
+  --teal-hover: color-mix(in srgb, var(--teal) 86%, #000);
+  --warning-ink: color-mix(in srgb, var(--warning) 60%, #000);
+  --error-ink: color-mix(in srgb, var(--error) 80%, #000);
+  --success-ink: color-mix(in srgb, var(--success) 85%, #000);
+
+  --radius-card: 12px;
+  --radius-ctl: 8px;
+  --shadow-card: 0 1px 2px rgba(18, 53, 91, 0.06), 0 8px 18px -10px rgba(18, 53, 91, 0.14);
+
+  --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --sidebar-w: 272px;
+  --sidebar-w-collapsed: 84px;
+  --header-h: 64px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { margin: 0; color: var(--navy); font-weight: 600; line-height: 1.25; }
+p { margin: 0; }
+ul { margin: 0; padding: 0; list-style: none; }
+a { color: var(--teal); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+img { max-width: 100%; display: block; }
+table { border-collapse: collapse; }
+
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.ico { display: inline-flex; flex: none; }
+.ico svg { width: 20px; height: 20px; display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

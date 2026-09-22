@@ -1,0 +1,44 @@
+// Small inline icon set (stroke, 24x24 viewBox). Kept in one place so pages/components share it.
+const I = {
+  dashboard: `<path d="M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6ZM13 3v6h8V3h-8Z"/>`,
+  budget: `<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/>`,
+  capex: `<path d="M4 21V9l8-6 8 6v12H4Z"/><path d="M9 21v-6h6v6"/>`,
+  staff: `<circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c.7-3.4 3.4-5.6 6.5-5.6s5.8 2.2 6.5 5.6"/><circle cx="17.5" cy="8.5" r="2.4"/><path d="M16.3 14.6c2.4.4 4.3 2.3 4.9 5"/>`,
+  gov: `<path d="M12 3 3 7v2h18V7l-9-4Z"/><path d="M5 10v7M9 10v7M15 10v7M19 10v7"/><path d="M3 21h18"/>`,
+  fund: `<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.3c0-1.4 1.2-2.1 2.5-2.1 1.5 0 2.6.8 2.6 2 0 3-5.1 1.8-5.1 4.7 0 1.3 1.2 2.1 2.6 2.1 1.4 0 2.6-.7 2.6-2.1"/>`,
+  consolidated: `<rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="7" rx="1.4"/><rect x="3" y="14" width="7" height="7" rx="1.4"/><rect x="14" y="14" width="7" height="7" rx="1.4"/>`,
+  actuals: `<path d="M4 4v16h16"/><path d="m7 15 3.5-4.5L13 13l4-5.5"/>`,
+  performance: `<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>`,
+  reports: `<path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v4h4"/><path d="M9 13h6M9 17h6M9 9h2"/>`,
+  setup: `<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4.7a7.6 7.6 0 0 0-2.6-1.5L14 2h-4l-.4 2.8a7.6 7.6 0 0 0-2.6 1.5l-2.4-.7-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-.7c.8.7 1.7 1.2 2.6 1.5L10 22h4l.4-2.8c.9-.3 1.8-.8 2.6-1.5l2.4.7 2-3.4-2-1.5Z"/>`,
+  accounts: `<path d="M4 4h16v4H4z"/><path d="M4 8v12h16V8"/><path d="M9 12h6"/>`,
+  branches: `<path d="M12 21s-7-5.3-7-11a7 7 0 0 1 14 0c0 5.7-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>`,
+  rules: `<path d="M9 3H4v6M15 3h5v6M9 21H4v-6M15 21h5v-6"/><path d="M9 12h6"/>`,
+  assumptions: `<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>`,
+  chevron: `<path d="m6 9 6 6 6-6"/>`,
+  menu: `<path d="M4 6h16M4 12h16M4 18h16"/>`,
+  collapse: `<path d="M15 5v14M9 5v14M4 5h16v14H4z"/><path d="m12 9-2 3 2 3" transform="translate(0 0)"/>`,
+  expand: `<path d="M9 5v14M15 5v14M4 5h16v14H4z"/>`,
+  logout: `<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>`,
+  user: `<circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c1-4 4-6.2 7.5-6.2s6.5 2.2 7.5 6.2"/>`,
+  plus: `<path d="M12 5v14M5 12h14"/>`,
+  upload: `<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>`,
+  download: `<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 20h16"/>`,
+  help: `<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.3 1-1.3 1.9v.3"/><path d="M12 17h.01"/>`,
+  eye: `<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>`,
+  eyeOff: `<path d="M3 3l18 18"/><path d="M10.6 5.2A9.9 9.9 0 0 1 12 5c6.5 0 10 7 10 7a15.6 15.6 0 0 1-4 4.6M6.2 6.2C3.6 7.9 2 12 2 12s3.5 7 10 7a9.9 9.9 0 0 0 3.9-.8"/><path d="M9.5 9.5a3 3 0 0 0 4.2 4.2"/>`,
+  bell: `<path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>`,
+  clock: `<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>`,
+  file: `<path d="M6 3h9l4 4v14H6Z"/><path d="M15 3v4h4"/>`,
+  spark: `<path d="M12 3v4M12 17v4M4 12h4M16 12h4M6.3 6.3l2.8 2.8M14.9 14.9l2.8 2.8M6.3 17.7l2.8-2.8M14.9 9.1l2.8-2.8"/>`,
+  check: `<path d="m5 13 4 4L19 7"/>`,
+  warn: `<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/>`,
+  overview: `<path d="M4 5h16M4 12h16M4 19h10"/>`,
+  variance: `<path d="M4 19h16"/><path d="M8 19V9m4 10V5m4 14v-7"/>`,
+  branchperf: `<path d="M4 19V13M9 19V7M14 19v-9M19 19V4"/>`,
+};
+export function icon(name, cls) {
+  const body = I[name] || I.help;
+  return `<span class="ico${cls ? ' ' + cls : ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg></span>`;
+}
+export default icon;

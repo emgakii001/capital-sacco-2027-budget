@@ -1,0 +1,116 @@
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 38px; padding: 0 14px; border-radius: var(--radius-ctl);
+  border: 1px solid transparent; font-weight: 500; font-size: 14px; line-height: 1;
+  white-space: nowrap; text-decoration: none; transition: background-color .15s, border-color .15s, color .15s;
+}
+.btn:hover { text-decoration: none; }
+.btn svg { width: 16px; height: 16px; }
+.btn-primary { background: var(--teal); color: #fff; }
+.btn-primary:hover { background: var(--teal-hover); }
+.btn-secondary { background: #fff; border-color: var(--line); color: var(--navy); }
+.btn-secondary:hover { background: var(--blue-50); }
+.btn-ghost { background: transparent; color: var(--navy); }
+.btn-ghost:hover { background: var(--blue-50); }
+.btn-block { width: 100%; height: 44px; }
+.btn-sm { height: 32px; padding: 0 10px; font-size: 13px; }
+.btn[aria-disabled="true"], .btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn[aria-disabled="true"]:hover { background: inherit; }
+.btn-primary[aria-disabled="true"]:hover, .btn-primary:disabled:hover { background: var(--teal); }
+.btn-secondary[aria-disabled="true"]:hover { background: #fff; }
+
+.spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Pills ---------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+  border-radius: 999px; font-size: 12.5px; font-weight: 500; line-height: 1.4;
+  background: var(--blue-50); color: var(--navy); white-space: nowrap;
+}
+.pill .ico svg { width: 13px; height: 13px; }
+.pill-teal { background: var(--teal-50); color: var(--teal); }
+.pill-ok { background: color-mix(in srgb, var(--success) 12%, #fff); color: var(--success-ink); }
+.pill-warn { background: color-mix(in srgb, var(--warning) 14%, #fff); color: var(--warning-ink); }
+.pill-error { background: color-mix(in srgb, var(--error) 10%, #fff); color: var(--error-ink); }
+.pill-muted { background: rgba(100,116,139,.12); color: #475569; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--white); border: 1px solid var(--line-soft);
+  border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+}
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 0; }
+.card-head h3 { font-size: 16px; }
+.card-head .sub { color: var(--text-2); font-size: 13px; margin-top: 2px; }
+.card-body { padding: 16px 20px 20px; }
+
+/* ---------- Banners ---------- */
+.banner {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px;
+  border-radius: 10px; border: 1px solid var(--line-soft); font-size: 13.5px;
+  background: var(--blue-50); color: var(--navy);
+}
+.banner .ico { margin-top: 1px; }
+.banner strong { font-weight: 600; }
+.banner-warn { background: color-mix(in srgb, var(--warning) 10%, #fff); border-color: color-mix(in srgb, var(--warning) 35%, #fff); color: var(--warning-ink); }
+.banner-error { background: color-mix(in srgb, var(--error) 8%, #fff); border-color: color-mix(in srgb, var(--error) 30%, #fff); color: var(--error-ink); }
+.banner-teal { background: var(--teal-50); border-color: color-mix(in srgb, var(--teal) 25%, #fff); color: #0B5A54; }
+
+/* ---------- States ---------- */
+.state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 36px 20px; color: var(--text-2); }
+.state-ico { width: 46px; height: 46px; border-radius: 12px; background: var(--blue-50); color: var(--navy); display: grid; place-items: center; margin-bottom: 4px; }
+.state h3 { font-size: 15px; }
+.state p { max-width: 48ch; font-size: 13.5px; }
+.state .btn { margin-top: 8px; }
+
+.skel { border-radius: 6px; background: linear-gradient(90deg, var(--blue-50) 0%, #F5F9FC 50%, var(--blue-50) 100%); background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---------- Forms ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-weight: 500; font-size: 13.5px; color: var(--navy); }
+.input, .select {
+  width: 100%; height: 42px; padding: 0 12px; background: #fff;
+  border: 1px solid rgba(18, 53, 91, 0.28); border-radius: var(--radius-ctl); color: var(--text);
+}
+.input:focus, .select:focus { outline: 2px solid var(--teal); outline-offset: 0; border-color: var(--teal); }
+.input[aria-invalid="true"] { border-color: var(--error); }
+.input:disabled, .select:disabled { background: #F4F7FA; color: var(--text-2); cursor: not-allowed; }
+.input-wrap { position: relative; }
+.input-wrap .input { padding-right: 46px; }
+.input-toggle {
+  position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; display: grid; place-items: center;
+  border: 0; background: transparent; color: var(--text-2); border-radius: 6px;
+}
+.input-toggle:hover { color: var(--navy); background: var(--blue-50); }
+.field-error { color: var(--error-ink); font-size: 12.5px; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 10px; }
+.filters .select, .filters .input { width: auto; min-width: 150px; height: 38px; }
+
+/* ---------- Tables ---------- */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line-soft); border-radius: 10px; }
+table.data { width: 100%; min-width: 620px; border-collapse: separate; border-spacing: 0; }
+table.data th {
+  position: sticky; top: 0; background: var(--blue-50); color: var(--navy);
+  text-align: left; font-weight: 600; font-size: 13px; padding: 10px 14px; white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+table.data td { padding: 10px 14px; border-bottom: 1px solid var(--line-soft); }
+table.data tr:last-child td { border-bottom: 0; }
+table.data td.empty-cell { padding: 0; }
+
+/* ---------- Switch (used on the navy dashboard hero) ---------- */
+.switch { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; user-select: none; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch .track { width: 40px; height: 22px; border-radius: 999px; background: rgba(255,255,255,.28); position: relative; transition: background-color .15s; flex: none; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s, background-color .15s; }
+.switch input:checked + .track { background: var(--teal-50); }
+.switch input:checked + .track::after { transform: translateX(18px); background: var(--teal); }
+.switch input:focus-visible + .track { outline: 2px solid #fff; outline-offset: 2px; }
