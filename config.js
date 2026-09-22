@@ -9,7 +9,7 @@
  * visitor's browser. Security is enforced by Supabase Auth and Row Level Security.
  */
 window.APP_CONFIG = {
-  SUPABASE_URL: "YOUR_SUPABASE_PROJECT_URL",            // e.g. https://abcdefghijkl.supabase.co
-  SUPABASE_PUBLISHABLE_KEY: "YOUR_SUPABASE_PUBLISHABLE_KEY",
+  SUPABASE_URL: "https://yyickwchmnxkybrsxopx.supabase.co",
+  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_pW4h0Vd3UVKKPGQGyjWO-g_6vx3TzEv",
   BUDGET_YEAR: 2027
 };
