@@ -16,5 +16,11 @@ if (isConfigured && window.supabase?.createClient) {
 }
 
 export const supabase = client;
-export const isSupabaseConfigured = isConfigured;
+// isSupabaseConfigured reflects whether a client was actually created, not
+// just whether config.js has values in it. Guards against a real crash: if
+// the Supabase JS library fails to load from its CDN for any reason (slow
+// network, ad-blocker, CDN outage) while config.js is filled in correctly,
+// `client` stays null — every page must treat that as "not connected" and
+// show its normal not-connected state, rather than calling methods on null.
+export const isSupabaseConfigured = !!client;
 export const BUDGET_YEAR = cfg.BUDGET_YEAR || 2027;

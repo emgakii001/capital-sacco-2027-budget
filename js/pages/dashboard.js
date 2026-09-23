@@ -70,6 +70,7 @@ export function renderDashboard(container) {
         <div class="banner banner-warn">${icon('warn')}<div><strong>Supabase is not yet connected.</strong> Add your project URL and publishable key to <code>config.js</code> to see live figures here, or switch on demo data above to preview the layout.</div></div>` : ''}
         ${d.error ? `<div class="banner banner-error">${icon('warn')}<div><strong>Unable to load budget data.</strong> ${escapeHtml(d.error)} Please try again.</div></div>` : ''}
         ${noBudget ? `<div class="banner banner-teal">${icon('spark')}<div>No ${BUDGET_YEAR} operating budget records have been entered yet. Cards below will populate once data is added.</div></div>` : ''}
+        ${!isDemo && isSupabaseConfigured && !d.error && d.hasActualsRows === false ? `<div class="banner banner-teal">${icon('spark')}<div>No actual data has been entered yet for ${BUDGET_YEAR}. Branch "Actual" figures will populate once actuals are recorded.</div></div>` : ''}
 
         <div class="stat-grid">
           ${statCard({ icoName: 'consolidated', label: 'Total Budgeted Income', value: d.totalIncome != null ? kes(d.totalIncome) : null, demo: isDemo })}
@@ -113,7 +114,7 @@ export function renderDashboard(container) {
                 <div class="branch-top"><span class="branch-code">${b.code}</span><span class="branch-name">${escapeHtml(b.name)}</span></div>
                 <dl>
                   <div><dt>Budget</dt><dd>${compactKes(b.budget)}</dd></div>
-                  <div><dt>Actual</dt><dd>${b.actual != null ? compactKes(b.actual) : 'Not connected'}</dd></div>
+                  <div><dt>Actual</dt><dd>${b.actual != null ? compactKes(b.actual) : (isSupabaseConfigured && !isDemo ? 'No actual data' : 'Not connected')}</dd></div>
                 </dl>
               </div>`).join('')}</div>` : `
             <div class="state"><div class="state-ico">${icon('branches')}</div><h3>Not yet connected</h3><p>Branch-level budget totals will appear here once data is available.</p></div>`}

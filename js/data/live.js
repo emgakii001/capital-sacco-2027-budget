@@ -1,7 +1,13 @@
-// Real data loader. Reads only from the existing Supabase tables/columns —
-// never renames, duplicates, or invents relationships that aren't there.
-import { supabase, isSupabaseConfigured, BUDGET_YEAR } from '../core/supabase-client.js';
-import { MONTHS } from './branches.js';
+// Real data loader for the Dashboard.
+//
+// FIX (see task): branch "actual" figures previously came from
+// operating_budget, which is BUDGET data, not actuals. Budget totals per
+// branch come from operating_budget; actual totals per branch come from the
+// actuals table. They are never the same query.
+import { BUDGET_YEAR, loadRefData, listRows, safeNum } from '../core/db.js';
+import { isSupabaseConfigured } from '../core/supabase-client.js';
+
+export { MONTHS } from './branches.js';
 
 const empty = () => ({
   totalIncome: null, totalExpense: null, surplus: null, capex: null,
@@ -14,32 +20,50 @@ export async function loadDashboardData() {
   const result = empty();
 
   try {
-    const { data: yearRow } = await supabase
-      .from('budget_years').select('id, year, status').eq('year', BUDGET_YEAR).maybeSingle();
+    const ref = await loadRefData();
+    if (!ref.year) { result.status = 'Not found'; return result; }
+    result.status = `${ref.year.year} — ${ref.year.status}`;
 
-    if (!yearRow) { result.status = 'Not found'; return result; }
-    result.status = `${yearRow.year} — ${yearRow.status}`;
+    const accountClassById = Object.fromEntries(ref.accounts.map((a) => [a.id, a.account_class]));
 
-    const [{ data: budgetRows, error: bErr }, { data: capexRows, error: cErr }, { data: branchRows }] = await Promise.all([
-      supabase.from('operating_budget')
-        .select('budget_amount, month_id, months(month_number), accounts(account_class)')
-        .eq('budget_year_id', yearRow.id),
-      supabase.from('capex_budget').select('quantity, unit_cost, total_cost').eq('budget_year_id', yearRow.id),
-      supabase.from('branches').select('id, branch_code, branch_name'),
+    const [budgetRes, capexRes, actualsRes] = await Promise.all([
+      listRows('operating_budget', {
+        select: 'budget_amount, branch_id, account_id, month_id, months(month_number)',
+        filters: [['budget_year_id', 'eq', ref.year.id]],
+      }),
+      listRows('capex_budget', {
+        select: 'quantity, unit_cost, total_cost',
+        filters: [['budget_year_id', 'eq', ref.year.id]],
+      }),
+      listRows('actuals', {
+        select: 'actual_amount, branch_id',
+        filters: [['budget_year_id', 'eq', ref.year.id]],
+      }),
     ]);
-    if (bErr || cErr) { result.error = (bErr || cErr).message; return result; }
+    if (budgetRes.error || capexRes.error) { result.error = (budgetRes.error || capexRes.error).message; return result; }
+
+    const budgetRows = budgetRes.data || [];
+    const capexRows = capexRes.data || [];
+    const actualRows = actualsRes.data || []; // actuals table may legitimately not exist yet / be empty — that's fine
 
     const monthlyIncome = Array(12).fill(0);
     const monthlyExpense = Array(12).fill(0);
     let totalIncome = 0, totalExpense = 0;
-    (budgetRows || []).forEach((r) => {
+    const budgetByBranch = {};
+
+    budgetRows.forEach((r) => {
       const idx = (r.months?.month_number || 1) - 1;
-      const amt = Number(r.budget_amount) || 0;
-      if (r.accounts?.account_class === 'Income') { totalIncome += amt; if (idx >= 0 && idx < 12) monthlyIncome[idx] += amt; }
-      else if (r.accounts?.account_class === 'Expense') { totalExpense += amt; if (idx >= 0 && idx < 12) monthlyExpense[idx] += amt; }
+      const amt = safeNum(r.budget_amount);
+      const cls = accountClassById[r.account_id];
+      if (cls === 'Income') { totalIncome += amt; if (idx >= 0 && idx < 12) monthlyIncome[idx] += amt; }
+      else if (cls === 'Expense') { totalExpense += amt; if (idx >= 0 && idx < 12) monthlyExpense[idx] += amt; }
+      budgetByBranch[r.branch_id] = (budgetByBranch[r.branch_id] || 0) + amt;
     });
 
-    const capex = (capexRows || []).reduce((sum, r) => sum + (r.total_cost != null ? Number(r.total_cost) : (Number(r.quantity) || 0) * (Number(r.unit_cost) || 0)), 0);
+    const capex = capexRows.reduce((sum, r) => sum + (r.total_cost != null ? safeNum(r.total_cost) : safeNum(r.quantity) * safeNum(r.unit_cost)), 0);
+
+    const actualByBranch = {};
+    actualRows.forEach((r) => { actualByBranch[r.branch_id] = (actualByBranch[r.branch_id] || 0) + safeNum(r.actual_amount); });
 
     result.totalIncome = totalIncome;
     result.totalExpense = totalExpense;
@@ -47,20 +71,21 @@ export async function loadDashboardData() {
     result.capex = capex;
     result.monthlyIncome = monthlyIncome;
     result.monthlyExpense = monthlyExpense;
-    result.hasBudgetRows = (budgetRows || []).length > 0;
-    result.hasCapexRows = (capexRows || []).length > 0;
+    result.hasBudgetRows = budgetRows.length > 0;
+    result.hasCapexRows = capexRows.length > 0;
+    result.hasActualsRows = actualRows.length > 0;
 
-    if (branchRows?.length) {
-      const { data: actualRows } = await supabase
-        .from('operating_budget')
-        .select('budget_amount, branch_id')
-        .eq('budget_year_id', yearRow.id);
-      const byBranch = {};
-      (actualRows || []).forEach((r) => { byBranch[r.branch_id] = (byBranch[r.branch_id] || 0) + (Number(r.budget_amount) || 0); });
-      result.branches = branchRows
-        .sort((a, b) => a.branch_code.localeCompare(b.branch_code))
-        .map((b) => ({ code: b.branch_code, name: b.branch_name, budget: byBranch[b.id] || 0, actual: null }));
-    }
+    result.branches = ref.branches
+      .slice()
+      .sort((a, b) => String(a.branch_code).localeCompare(String(b.branch_code)))
+      .map((b) => ({
+        code: b.branch_code,
+        name: b.branch_name,
+        budget: budgetByBranch[b.id] || 0,
+        // null (not 0) when there are genuinely no actuals rows for this branch,
+        // so the UI can say "No actual data" rather than implying KES 0 was recorded.
+        actual: Object.prototype.hasOwnProperty.call(actualByBranch, b.id) ? actualByBranch[b.id] : null,
+      }));
 
     return result;
   } catch (err) {
@@ -68,5 +93,3 @@ export async function loadDashboardData() {
     return result;
   }
 }
-
-export { MONTHS };

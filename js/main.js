@@ -7,6 +7,40 @@ import { renderDashboard } from './pages/dashboard.js';
 import { renderBudgetOverview } from './pages/budget-overview.js';
 import { renderPlaceholderPage } from './pages/placeholder.js';
 import { ROUTES } from './pages/route-configs.js';
+import { renderCrudModule } from './pages/crud-engine.js';
+import { OPERATING_BUDGET_CFG, CAPEX_CFG, STAFF_CFG, GOVERNANCE_CFG, FUNDING_CFG } from './pages/budget-page-configs.js';
+import { renderActualsPage } from './pages/actuals-page.js';
+import { renderConsolidatedBudget } from './pages/consolidated-budget.js';
+import { renderSetupAccounts, renderSetupBranches, renderSetupAllocationRules, renderSetupAssumptions } from './pages/setup-pages.js';
+import { renderPerformanceOverview, renderBudgetVsActual, renderMonthlyPerformance, renderBranchPerformance } from './pages/performance-pages.js';
+import { renderReportCentre, renderAnnualReport, renderMonthlyReport, renderBranchReport, renderCapexReport, renderFundingReport, renderManagementReport } from './pages/report-pages.js';
+
+// Routes that are fully wired to Supabase. Anything not listed here still
+// falls back to the descriptive placeholder page (see route-configs.js).
+const CONNECTED_ROUTES = {
+  '#/budget/operating': (el) => renderCrudModule(el, OPERATING_BUDGET_CFG),
+  '#/budget/capex': (el) => renderCrudModule(el, CAPEX_CFG),
+  '#/budget/staff': (el) => renderCrudModule(el, STAFF_CFG),
+  '#/budget/governance': (el) => renderCrudModule(el, GOVERNANCE_CFG),
+  '#/budget/funding': (el) => renderCrudModule(el, FUNDING_CFG),
+  '#/budget/consolidated': (el) => renderConsolidatedBudget(el),
+  '#/actuals': (el) => renderActualsPage(el),
+  '#/setup/accounts': (el) => renderSetupAccounts(el),
+  '#/setup/branches': (el) => renderSetupBranches(el),
+  '#/setup/allocation-rules': (el) => renderSetupAllocationRules(el),
+  '#/setup/assumptions': (el) => renderSetupAssumptions(el),
+  '#/performance': (el) => renderPerformanceOverview(el),
+  '#/performance/budget-vs-actual': (el) => renderBudgetVsActual(el),
+  '#/performance/monthly': (el) => renderMonthlyPerformance(el),
+  '#/performance/branch': (el) => renderBranchPerformance(el),
+  '#/reports': (el) => renderReportCentre(el),
+  '#/reports/annual': (el) => renderAnnualReport(el),
+  '#/reports/monthly': (el) => renderMonthlyReport(el),
+  '#/reports/branch': (el) => renderBranchReport(el),
+  '#/reports/capex': (el) => renderCapexReport(el),
+  '#/reports/funding': (el) => renderFundingReport(el),
+  '#/reports/management': (el) => renderManagementReport(el),
+};
 
 const root = document.getElementById('app');
 let currentSession = null;
@@ -27,6 +61,7 @@ function renderRoute(path) {
     return;
   }
   if (path === '#/budget') { renderBudgetOverview(content); return; }
+  if (CONNECTED_ROUTES[path]) { CONNECTED_ROUTES[path](content); return; }
   if (ROUTES[path]) { renderPlaceholderPage(content, ROUTES[path]); return; }
 
   // Unknown hash: send to dashboard.
