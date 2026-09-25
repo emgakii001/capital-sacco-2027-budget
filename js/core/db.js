@@ -54,7 +54,7 @@ export async function loadRefData() {
     const [{ data: branches, error: bErr }, { data: accounts, error: aErr }, { data: months, error: mErr }] = await Promise.all([
       db.from('branches').select('id, branch_code, branch_name').order('branch_code'),
       db.from('accounts').select('id, account_code, account_name, account_class').order('account_code'),
-      db.from('months').select('id, month_number, month_name, year').order('month_number'),
+      db.from('months').select('id, month_number, month_name, budget_year_id').order('month_number'),
     ]);
     const err = bErr || aErr || mErr;
     if (err) throw err;
@@ -62,9 +62,10 @@ export async function loadRefData() {
     refCache = {
       branches: branches || [],
       accounts: accounts || [],
-      // months may or may not be scoped by year in the schema — only filter
-      // by year when a row actually carries one, and only once a year is selected.
-      months: (months || []).filter((m) => !m.year || !yearRow || String(m.year) === String(yearRow.year)),
+      // Months belong to a specific budget year via months.budget_year_id ->
+      // budget_years.id. Until a year is selected there's no valid set of
+      // months to show; once one is, only that year's 12 rows apply.
+      months: yearRow ? (months || []).filter((m) => String(m.budget_year_id) === String(yearRow.id)) : [],
       year: yearRow || null,
     };
     return refCache;
