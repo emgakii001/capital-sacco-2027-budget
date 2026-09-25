@@ -4,6 +4,8 @@
 // header. All validation and Supabase-specific logic lives in
 // upload-config.js, not here, so this file stays reusable.
 
+import { getSelectedYearLabel } from './year-context.js';
+
 function xlsxLib() {
   if (!window.XLSX) throw new Error('The Excel library has not finished loading yet. Please wait a moment and try again.');
   return window.XLSX;
@@ -42,7 +44,12 @@ export function downloadTemplate(spec) {
   const header = spec.columns.map((c) => c.header);
   const rows = [header];
   if (spec.sampleRow) {
-    rows.push(spec.columns.map((c) => spec.sampleRow[c.key] ?? ''));
+    // The example row's budget_year is filled with whichever year is
+    // currently selected in the app — never a hard-coded year — so the
+    // downloaded template always matches the year the Finance Manager is
+    // about to upload into.
+    const yearLabel = getSelectedYearLabel();
+    rows.push(spec.columns.map((c) => (c.kind === 'year' ? (yearLabel ?? '<select a budget year first>') : (spec.sampleRow[c.key] ?? ''))));
   }
   const wsData = XLSX.utils.aoa_to_sheet(rows);
   wsData['!cols'] = spec.columns.map((c) => ({ wch: Math.max(14, c.header.length + 4) }));

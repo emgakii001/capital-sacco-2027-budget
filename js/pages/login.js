@@ -1,17 +1,17 @@
 import { auth } from '../core/auth.js';
 import { icon } from '../core/icons.js';
-import { isSupabaseConfigured, BUDGET_YEAR } from '../core/supabase-client.js';
+import { isSupabaseConfigured } from '../core/supabase-client.js';
 
 export function renderLogin(root, onSuccess) {
   root.innerHTML = `
     <div class="login">
       <section class="login-story" aria-hidden="true">
         <div>
-          <h2>${BUDGET_YEAR} Budget Management System</h2>
+          <h2>Budget Management System</h2>
           <p class="lead">One place to build, track and report on Capital SACCO's annual budget — from first draft to management review.</p>
         </div>
         <ol class="flow">
-          <li><strong>Budget</strong><span>Enter or upload Operating, CAPEX, Staff, Governance and Funding figures for ${BUDGET_YEAR}.</span></li>
+          <li><strong>Budget</strong><span>Enter or upload Operating, CAPEX, Staff, Governance and Funding figures for any budget year.</span></li>
           <li><strong>Actuals</strong><span>Record monthly actuals once — year-to-date and full-year totals follow automatically.</span></li>
           <li><strong>Performance</strong><span>See budget vs actual, variance and branch performance as the year unfolds.</span></li>
           <li><strong>Reports</strong><span>Generate management-ready reports straight from the stored figures.</span></li>
@@ -25,7 +25,7 @@ export function renderLogin(root, onSuccess) {
             <img src="assets/logo.jpg" alt="Capital SACCO Ltd. — Base for Growth">
           </div>
           <h1>Sign in</h1>
-          <p class="intro">${BUDGET_YEAR} Budget Management System</p>
+          <p class="intro">Budget Management System</p>
 
           ${!isSupabaseConfigured ? `
           <div class="banner banner-teal" role="note" style="margin-bottom:16px">

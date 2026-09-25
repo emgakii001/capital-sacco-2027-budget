@@ -36,6 +36,8 @@ const I = {
   overview: `<path d="M4 5h16M4 12h16M4 19h10"/>`,
   variance: `<path d="M4 19h16"/><path d="M8 19V9m4 10V5m4 14v-7"/>`,
   branchperf: `<path d="M4 19V13M9 19V7M14 19v-9M19 19V4"/>`,
+  edit: `<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>`,
+  trash: `<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>`,
 };
 export function icon(name, cls) {
   const body = I[name] || I.help;

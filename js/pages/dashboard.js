@@ -1,6 +1,7 @@
 import { icon } from '../core/icons.js';
 import { kes, compactKes, escapeHtml } from '../core/format.js';
-import { isSupabaseConfigured, BUDGET_YEAR } from '../core/supabase-client.js';
+import { isSupabaseConfigured } from '../core/supabase-client.js';
+import { getSelectedYearLabel } from '../core/year-context.js';
 import { MONTHS } from '../data/branches.js';
 import { buildDemoDashboard } from '../data/demo.js';
 import { loadDashboardData } from '../data/live.js';
@@ -25,13 +26,14 @@ function quickAction(icoName, label, href) {
 
 export function renderDashboard(container) {
   const demoOn = localStorage.getItem(DEMO_KEY) === '1';
+  const yearLabel = getSelectedYearLabel();
 
   container.innerHTML = `
     <div class="page">
       <section class="hero">
         <div>
-          <h2>${BUDGET_YEAR} Budget Dashboard</h2>
-          <p>A high-level view of the ${BUDGET_YEAR} budget. Use Budget, Actuals, Performance and Reports in the sidebar for full detail.</p>
+          <h2>${yearLabel ? `${yearLabel} Budget Dashboard` : 'Budget Dashboard'}</h2>
+          <p>${yearLabel ? `A high-level view of the ${yearLabel} budget.` : 'Select or add a budget year in the header to see figures here.'} Use Budget, Actuals, Performance and Reports in the sidebar for full detail.</p>
         </div>
         <div class="hero-side">
           <label class="switch">
@@ -69,8 +71,8 @@ export function renderDashboard(container) {
         ${!isSupabaseConfigured && !isDemo ? `
         <div class="banner banner-warn">${icon('warn')}<div><strong>Supabase is not yet connected.</strong> Add your project URL and publishable key to <code>config.js</code> to see live figures here, or switch on demo data above to preview the layout.</div></div>` : ''}
         ${d.error ? `<div class="banner banner-error">${icon('warn')}<div><strong>Unable to load budget data.</strong> ${escapeHtml(d.error)} Please try again.</div></div>` : ''}
-        ${noBudget ? `<div class="banner banner-teal">${icon('spark')}<div>No ${BUDGET_YEAR} operating budget records have been entered yet. Cards below will populate once data is added.</div></div>` : ''}
-        ${!isDemo && isSupabaseConfigured && !d.error && d.hasActualsRows === false ? `<div class="banner banner-teal">${icon('spark')}<div>No actual data has been entered yet for ${BUDGET_YEAR}. Branch "Actual" figures will populate once actuals are recorded.</div></div>` : ''}
+        ${noBudget ? `<div class="banner banner-teal">${icon('spark')}<div>No operating budget records have been entered yet for ${yearLabel ?? 'the selected year'}. Cards below will populate once data is added.</div></div>` : ''}
+        ${!isDemo && isSupabaseConfigured && !d.error && d.hasActualsRows === false ? `<div class="banner banner-teal">${icon('spark')}<div>No actual data has been entered yet for ${yearLabel ?? 'the selected year'}. Branch "Actual" figures will populate once actuals are recorded.</div></div>` : ''}
 
         <div class="stat-grid">
           ${statCard({ icoName: 'consolidated', label: 'Total Budgeted Income', value: d.totalIncome != null ? kes(d.totalIncome) : null, demo: isDemo })}
@@ -96,11 +98,11 @@ export function renderDashboard(container) {
 
         <div class="card">
           <div class="card-head">
-            <div><h3>Monthly Budget Overview</h3><div class="sub">Income vs operating expenses, January–December ${BUDGET_YEAR}${isDemo ? ' — demo data' : ''}</div></div>
+            <div><h3>Monthly Budget Overview</h3><div class="sub">Income vs operating expenses, January–December${yearLabel ? ` ${yearLabel}` : ''}${isDemo ? ' — demo data' : ''}</div></div>
           </div>
           <div class="card-body">
             ${d.monthlyIncome ? `<div class="chart-box"><canvas id="monthlyChart" role="img" aria-label="Monthly income and expenses chart"></canvas></div>` : `
-            <div class="state"><div class="state-ico">${icon('performance')}</div><h3>Not yet connected</h3><p>Monthly figures will appear here once ${BUDGET_YEAR} operating budget data is available.</p></div>`}
+            <div class="state"><div class="state-ico">${icon('performance')}</div><h3>Not yet connected</h3><p>Monthly figures will appear here once operating budget data is available for ${yearLabel ?? 'the selected year'}.</p></div>`}
           </div>
         </div>
 

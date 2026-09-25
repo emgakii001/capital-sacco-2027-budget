@@ -1,6 +1,6 @@
 import { icon } from '../core/icons.js';
 import { kes, escapeHtml } from '../core/format.js';
-import { loadRefData, listRows, isSupabaseConfigured, BUDGET_YEAR, safeNum } from '../core/db.js';
+import { loadRefData, listRows, isSupabaseConfigured, safeNum } from '../core/db.js';
 import { renderCrudModule } from './crud-engine.js';
 import { ACTUALS_CFG } from './budget-page-configs.js';
 
@@ -32,7 +32,7 @@ export async function renderActualsPage(container) {
       summaryEl.innerHTML = `<div class="banner banner-error">${icon('warn')}<div>Unable to load reference data: ${escapeHtml(err.message)}</div></div>`;
       return;
     }
-    if (!ref.year) { summaryEl.innerHTML = `<div class="banner banner-error">${icon('warn')}<div>Budget year ${BUDGET_YEAR} not found.</div></div>`; return; }
+    if (!ref.year) { summaryEl.innerHTML = `<div class="banner banner-error">${icon('warn')}<div>No budget year is selected. Add or select a budget year from the header first.</div></div>`; return; }
 
     const { data, error } = await listRows('actuals', {
       select: 'actual_amount, month_id, account_id, months(month_number), accounts(account_class)',
@@ -57,7 +57,7 @@ export async function renderActualsPage(container) {
 
     summaryEl.innerHTML = `
       <div class="card">
-        <div class="card-head"><h3>Actuals — ${BUDGET_YEAR}</h3></div>
+        <div class="card-head"><h3>Actuals — ${ref.year.year}</h3></div>
         <div class="card-body">
           <div class="month-grid">
             ${MONTHS_ORDER.map((name, i) => {
@@ -84,7 +84,7 @@ export async function renderActualsPage(container) {
             </div>
             <div data-panel="ytd" hidden>
               ${lastEnteredIdx < 0 ? `<div class="state"><div class="state-ico">${icon('actuals')}</div><h3>No actual data has been entered yet</h3><p>Year-to-Date figures will appear once at least one month has actuals recorded.</p></div>` : `
-              <p class="ph-note">January – ${MONTHS_ORDER[lastEnteredIdx]} ${BUDGET_YEAR} (the latest month with recorded actuals).</p>
+              <p class="ph-note">January – ${MONTHS_ORDER[lastEnteredIdx]} ${ref.year.year} (the latest month with recorded actuals).</p>
               <div class="stat-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
                 <div class="stat"><div class="stat-top">Income</div><div class="stat-value num">${kes(ytd.income)}</div></div>
                 <div class="stat"><div class="stat-top">Expenses</div><div class="stat-value num">${kes(ytd.expense)}</div></div>

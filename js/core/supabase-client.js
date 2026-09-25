@@ -23,4 +23,6 @@ export const supabase = client;
 // `client` stays null — every page must treat that as "not connected" and
 // show its normal not-connected state, rather than calling methods on null.
 export const isSupabaseConfigured = !!client;
-export const BUDGET_YEAR = cfg.BUDGET_YEAR || 2027;
+// No BUDGET_YEAR constant here by design — the operative budget year is
+// never hard-coded. See js/core/year-context.js, which loads every year
+// that exists in budget_years and lets the user pick or add one.

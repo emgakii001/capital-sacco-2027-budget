@@ -3,7 +3,8 @@
 // Download Template button, the Upload Guide modal, and the importer all
 // stay in sync automatically — nothing about a module's columns is
 // duplicated elsewhere.
-import { branchIdByCode, accountIdByCode, monthIdByValue, BUDGET_YEAR, safeNum } from './db.js';
+import { branchIdByCode, accountIdByCode, monthIdByValue, safeNum } from './db.js';
+import { getSelectedYearLabel } from './year-context.js';
 
 const CALC_METHODS = ['Meetings × Persons × Rate', 'Days × Persons × Rate', 'Assignments × Persons × Rate', 'Night-outs × Persons × Rate', 'Fixed', 'Other / Custom'];
 
@@ -21,10 +22,13 @@ function resolveCommon(kind, raw, ref, colHeader, options) {
   }
   switch (kind) {
     case 'year': {
-      const n = parseInt(value, 10);
-      if (!n) return { error: `${colHeader} is required` };
-      if (n !== BUDGET_YEAR) return { error: `${colHeader} "${value}" — only ${BUDGET_YEAR} is currently set up` };
-      if (!ref.year) return { error: `Budget year ${BUDGET_YEAR} was not found in budget_years` };
+      // The budget year is never hard-coded — a row is only valid for
+      // whichever year is currently selected in the app header.
+      if (!ref.year) return { error: 'No budget year is selected. Select or add a budget year first.' };
+      if (!value && value !== 0) return { error: `${colHeader} is required` };
+      if (String(value).trim() !== String(ref.year.year)) {
+        return { error: `${colHeader} "${value}" does not match the currently selected budget year (${ref.year.year}). Switch to that year in the header, or select the year this file is for before uploading.` };
+      }
       return { value: ref.year.id };
     }
     case 'branch_code': {
@@ -85,14 +89,14 @@ export const UPLOAD_SPECS = {
     purpose: 'Bulk-upload monthly operating budget amounts by branch, account and month.',
     calcNote: 'None — each row is a direct monthly budget amount.',
     columns: [
-      col('budget_year', 'budget_year', true, 'year', BUDGET_YEAR, `Must be ${BUDGET_YEAR} — the currently open budget year.`),
+      col('budget_year', 'budget_year', true, 'year', '(current year)', 'Must match the currently selected budget year, shown in the app header.'),
       col('branch_code', 'branch_code', true, 'branch_code', '01', 'A branch code from Setup → Branches (00–15).'),
       col('account_code', 'account_code', true, 'account_code', '<a code from Setup → Accounts / COA>', 'A valid account code from the Chart of Accounts.'),
       col('month', 'month', true, 'month', 'January', 'Full month name preferred (January–December). "1" or "Jan" are also accepted.'),
       col('budget_amount', 'budget_amount', true, 'amount', 250000, 'Numeric KES amount — no currency symbol or thousands separator.'),
       col('notes', 'notes', false, 'text', '', 'Optional free text.'),
     ],
-    sampleRow: { budget_year: BUDGET_YEAR, branch_code: '01', account_code: '<use a real code from your COA>', month: 'January', budget_amount: 250000, notes: 'Example row — replace with your own data' },
+    sampleRow: { budget_year: '', branch_code: '01', account_code: '<use a real code from your COA>', month: 'January', budget_amount: 250000, notes: 'Example row — replace with your own data' },
     fkMap: { budget_year: 'budget_year_id', branch_code: 'branch_id', account_code: 'account_id', month: 'month_id' },
     buildPayload(raw, ref) {
       const { payload, errors } = parseRowGeneric(this, raw, ref);
@@ -112,7 +116,7 @@ export const UPLOAD_SPECS = {
     purpose: 'Bulk-upload capital expenditure items by branch.',
     calcNote: 'total_cost = quantity × unit_cost. Leave total_cost blank and it will be calculated automatically; if you fill it in, your value is used as given.',
     columns: [
-      col('budget_year', 'budget_year', true, 'year', BUDGET_YEAR, `Must be ${BUDGET_YEAR}.`),
+      col('budget_year', 'budget_year', true, 'year', '(current year)', 'Must match the currently selected budget year, shown in the app header.'),
       col('branch_code', 'branch_code', true, 'branch_code', '00', 'A branch code from Setup → Branches.'),
       col('item_name', 'item_name', true, 'text', 'Toyota Hiace', 'Short name of the CAPEX item.'),
       col('description', 'description', false, 'text', '', 'Optional detail.'),
@@ -122,7 +126,7 @@ export const UPLOAD_SPECS = {
       col('funding_source', 'funding_source', false, 'text', '', 'Optional free text, e.g. Reserves, Commercial Bank.'),
       col('notes', 'notes', false, 'text', '', 'Optional.'),
     ],
-    sampleRow: { budget_year: BUDGET_YEAR, branch_code: '00', item_name: 'Example item — replace', description: '', quantity: 1, unit_cost: 100000, total_cost: '', funding_source: '', notes: 'Example row — replace with your own data' },
+    sampleRow: { budget_year: '', branch_code: '00', item_name: 'Example item — replace', description: '', quantity: 1, unit_cost: 100000, total_cost: '', funding_source: '', notes: 'Example row — replace with your own data' },
     buildPayload(raw, ref) {
       const { payload, errors } = parseRowGeneric(this, raw, ref);
       if (errors.length) return { errors, payload: null };
@@ -144,7 +148,7 @@ export const UPLOAD_SPECS = {
     purpose: 'Bulk-upload staff cost schedule items by branch.',
     calcNote: 'annual_amount = number_of_staff × monthly_amount × months. monthly_amount is per staff member. Leave annual_amount blank to have it calculated, or provide your own figure.',
     columns: [
-      col('budget_year', 'budget_year', true, 'year', BUDGET_YEAR, `Must be ${BUDGET_YEAR}.`),
+      col('budget_year', 'budget_year', true, 'year', '(current year)', 'Must match the currently selected budget year, shown in the app header.'),
       col('branch_code', 'branch_code', true, 'branch_code', '00', 'A branch code from Setup → Branches.'),
       col('account_code', 'account_code', true, 'account_code', '<a code from Setup → Accounts / COA>', 'A valid account code, typically a staff-cost account.'),
       col('budget_item', 'budget_item', true, 'text', 'Salaries', 'e.g. Salaries, Training, Staff Travel.'),
@@ -154,7 +158,7 @@ export const UPLOAD_SPECS = {
       col('annual_amount', 'annual_amount', false, 'number', '', 'Optional — calculated if left blank.'),
       col('notes', 'notes', false, 'text', '', 'Optional.'),
     ],
-    sampleRow: { budget_year: BUDGET_YEAR, branch_code: '00', account_code: '<use a real code from your COA>', budget_item: 'Example item — replace', number_of_staff: 1, monthly_amount: 0, months: 12, annual_amount: '', notes: 'Example row — replace with your own data' },
+    sampleRow: { budget_year: '', branch_code: '00', account_code: '<use a real code from your COA>', budget_item: 'Example item — replace', number_of_staff: 1, monthly_amount: 0, months: 12, annual_amount: '', notes: 'Example row — replace with your own data' },
     buildPayload(raw, ref) {
       const { payload, errors } = parseRowGeneric(this, raw, ref);
       if (errors.length) return { errors, payload: null };
@@ -176,7 +180,7 @@ export const UPLOAD_SPECS = {
     purpose: 'Bulk-upload governance and delegates cost items by branch.',
     calcNote: `For Meetings/Days/Assignments/Night-outs methods: annual_amount = Persons × Rate × (meetings_or_days, or quantity if that's blank) when left blank. For "Fixed" or "Other / Custom", annual_amount must be provided — it cannot be derived automatically. Supported methods: ${CALC_METHODS.join(', ')}. tax_provision is a KES amount, not a percentage — no tax rate is assumed.`,
     columns: [
-      col('budget_year', 'budget_year', true, 'year', BUDGET_YEAR, `Must be ${BUDGET_YEAR}.`),
+      col('budget_year', 'budget_year', true, 'year', '(current year)', 'Must match the currently selected budget year, shown in the app header.'),
       col('branch_code', 'branch_code', true, 'branch_code', '00', 'A branch code from Setup → Branches.'),
       col('account_code', 'account_code', true, 'account_code', '<a code from Setup → Accounts / COA>', 'A valid governance-related account code.'),
       col('budget_item', 'budget_item', true, 'text', 'AGM', 'e.g. AGM, Board Meetings, Delegates Conference.'),
@@ -189,7 +193,7 @@ export const UPLOAD_SPECS = {
       col('tax_provision', 'tax_provision', false, 'number', 0, 'KES amount, not a percentage. Leave 0 if not applicable.'),
       col('notes', 'notes', false, 'text', '', 'Optional.'),
     ],
-    sampleRow: { budget_year: BUDGET_YEAR, branch_code: '00', account_code: '<use a real code from your COA>', budget_item: 'Example item — replace', calculation_method: 'Meetings × Persons × Rate', quantity: '', persons: 5, rate: 5000, meetings_or_days: 4, annual_amount: '', tax_provision: 0, notes: 'Example row — replace with your own data' },
+    sampleRow: { budget_year: '', branch_code: '00', account_code: '<use a real code from your COA>', budget_item: 'Example item — replace', calculation_method: 'Meetings × Persons × Rate', quantity: '', persons: 5, rate: 5000, meetings_or_days: 4, annual_amount: '', tax_provision: 0, notes: 'Example row — replace with your own data' },
     buildPayload(raw, ref) {
       const { payload, errors } = parseRowGeneric(this, raw, ref);
       if (errors.length) return { errors, payload: null };
@@ -222,7 +226,7 @@ export const UPLOAD_SPECS = {
     purpose: 'Bulk-upload funding requirements and how they will be financed.',
     calcNote: 'funding_gap = amount_required − amount_funded. This is calculated by the system and is not an upload column.',
     columns: [
-      col('budget_year', 'budget_year', true, 'year', BUDGET_YEAR, `Must be ${BUDGET_YEAR}.`),
+      col('budget_year', 'budget_year', true, 'year', '(current year)', 'Must match the currently selected budget year, shown in the app header.'),
       col('branch_code', 'branch_code', true, 'branch_code', '00', 'A branch code from Setup → Branches.'),
       col('funding_requirement', 'funding_requirement', true, 'text', 'Branch expansion', 'What needs funding, e.g. Purchase Toyota Hiace.'),
       col('purpose', 'purpose', false, 'text', '', 'Optional additional detail.'),
@@ -233,7 +237,7 @@ export const UPLOAD_SPECS = {
       col('status', 'status', false, 'text', '', 'Free text — Capital SACCO defines its own status values.'),
       col('notes', 'notes', false, 'text', '', 'Optional.'),
     ],
-    sampleRow: { budget_year: BUDGET_YEAR, branch_code: '00', funding_requirement: 'Example requirement — replace', purpose: '', financing_type: '', amount_required: 0, amount_funded: 0, funding_source: '', status: '', notes: 'Example row — replace with your own data' },
+    sampleRow: { budget_year: '', branch_code: '00', funding_requirement: 'Example requirement — replace', purpose: '', financing_type: '', amount_required: 0, amount_funded: 0, funding_source: '', status: '', notes: 'Example row — replace with your own data' },
     buildPayload(raw, ref) {
       const { payload, errors } = parseRowGeneric(this, raw, ref);
       if (errors.length) return { errors, payload: null };
@@ -255,7 +259,7 @@ export const UPLOAD_SPECS = {
     purpose: 'Bulk-upload monthly actual transactions by branch, account and month.',
     calcNote: 'Multiple rows can share the same branch, account and month — they represent different transactions. Rows are only flagged as possible duplicates when branch, account, month, reference and amount all match exactly; they are still imported, not rejected.',
     columns: [
-      col('budget_year', 'budget_year', true, 'year', BUDGET_YEAR, `Must be ${BUDGET_YEAR}.`),
+      col('budget_year', 'budget_year', true, 'year', '(current year)', 'Must match the currently selected budget year, shown in the app header.'),
       col('branch_code', 'branch_code', true, 'branch_code', '01', 'A branch code from Setup → Branches.'),
       col('account_code', 'account_code', true, 'account_code', '<a code from Setup → Accounts / COA>', 'A valid account code.'),
       col('month', 'month', true, 'month', 'January', 'Full month name preferred.'),
@@ -264,7 +268,7 @@ export const UPLOAD_SPECS = {
       col('description', 'description', false, 'text', '', 'Optional description.'),
       col('notes', 'notes', false, 'text', '', 'Optional.'),
     ],
-    sampleRow: { budget_year: BUDGET_YEAR, branch_code: '01', account_code: '<use a real code from your COA>', month: 'January', actual_amount: 250000, reference: '', description: '', notes: 'Example row — replace with your own data' },
+    sampleRow: { budget_year: '', branch_code: '01', account_code: '<use a real code from your COA>', month: 'January', actual_amount: 250000, reference: '', description: '', notes: 'Example row — replace with your own data' },
     buildPayload(raw, ref) {
       const { payload, errors } = parseRowGeneric(this, raw, ref);
       return {

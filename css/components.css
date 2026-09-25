@@ -142,3 +142,7 @@ table.data td.empty-cell { padding: 0; }
 .import-summary .is-errors { padding: 10px 16px; max-height: 220px; overflow-y: auto; }
 .import-summary .is-errors div { font-size: 13px; padding: 4px 0; border-bottom: 1px dashed var(--line-soft); color: var(--error-ink); }
 .import-summary .is-dupes { padding: 10px 16px; font-size: 13px; color: var(--warning-ink); background: color-mix(in srgb, var(--warning) 8%, #fff); }
+
+/* ---------- CRUD row actions (Edit / Delete) ---------- */
+td.row-actions { white-space: nowrap; }
+td.row-actions .btn { padding: 0 8px; }

@@ -2,7 +2,7 @@
 // never written to Supabase. Used purely so the UI can be reviewed before
 // real budget figures exist in the database.
 import { BRANCHES, MONTHS } from './branches.js';
-import { BUDGET_YEAR } from '../core/supabase-client.js';
+import { getSelectedYearLabel } from '../core/year-context.js';
 
 function seeded(seed) {
   let s = seed;
@@ -25,7 +25,7 @@ export function buildDemoDashboard() {
 
   return {
     totalIncome, totalExpense, surplus: totalIncome - totalExpense, capex,
-    status: `${BUDGET_YEAR} — Open`,
+    status: `${getSelectedYearLabel() ?? 'Demo Year'} — Open`,
     monthlyIncome, monthlyExpense,
     branches,
   };

@@ -5,14 +5,22 @@
 // This module never renames columns, never invents a relationship that
 // isn't in the schema, and never falls back to writing fake/demo rows.
 
-import { supabase, isSupabaseConfigured, BUDGET_YEAR } from './supabase-client.js';
+import { supabase, isSupabaseConfigured } from './supabase-client.js';
+import { getSelectedYear, onYearChange } from './year-context.js';
 
-export { isSupabaseConfigured, BUDGET_YEAR };
+export { isSupabaseConfigured };
 
 export class NotConfiguredError extends Error {
   constructor() {
     super('Supabase is not yet connected. Add your project URL and publishable key to config.js.');
     this.name = 'NotConfiguredError';
+  }
+}
+
+export class NoBudgetYearError extends Error {
+  constructor() {
+    super('No budget year is selected. Add or select a budget year first.');
+    this.name = 'NoBudgetYearError';
   }
 }
 
@@ -22,9 +30,10 @@ function client() {
 }
 
 // ---------------------------------------------------------------------
-// Reference data (branches, accounts, months, the current budget year row)
-// Cached per page load — call resetRefCache() after Setup adds a new
-// branch/account so the next read picks it up.
+// Reference data (branches, accounts, months for the SELECTED budget year).
+// Cached per selected-year — call resetRefCache() after Setup adds a new
+// branch/account, and automatically reset whenever the selected year
+// changes (see the onYearChange subscription below).
 // ---------------------------------------------------------------------
 let refCache = null;
 let refCachePromise = null;
@@ -33,6 +42,7 @@ export function resetRefCache() {
   refCache = null;
   refCachePromise = null;
 }
+onYearChange(() => resetRefCache());
 
 export async function loadRefData() {
   if (refCache) return refCache;
@@ -40,19 +50,21 @@ export async function loadRefData() {
 
   refCachePromise = (async () => {
     const db = client();
-    const [{ data: branches, error: bErr }, { data: accounts, error: aErr }, { data: months, error: mErr }, { data: yearRow, error: yErr }] = await Promise.all([
+    const yearRow = getSelectedYear();
+    const [{ data: branches, error: bErr }, { data: accounts, error: aErr }, { data: months, error: mErr }] = await Promise.all([
       db.from('branches').select('id, branch_code, branch_name').order('branch_code'),
       db.from('accounts').select('id, account_code, account_name, account_class').order('account_code'),
       db.from('months').select('id, month_number, month_name, year').order('month_number'),
-      db.from('budget_years').select('id, year, status').eq('year', BUDGET_YEAR).maybeSingle(),
     ]);
-    const err = bErr || aErr || mErr || yErr;
+    const err = bErr || aErr || mErr;
     if (err) throw err;
 
     refCache = {
       branches: branches || [],
       accounts: accounts || [],
-      months: (months || []).filter((m) => !m.year || m.year === BUDGET_YEAR),
+      // months may or may not be scoped by year in the schema — only filter
+      // by year when a row actually carries one, and only once a year is selected.
+      months: (months || []).filter((m) => !m.year || !yearRow || String(m.year) === String(yearRow.year)),
       year: yearRow || null,
     };
     return refCache;
@@ -63,13 +75,6 @@ export async function loadRefData() {
   } finally {
     refCachePromise = null;
   }
-}
-
-export async function loadAllYears() {
-  const db = client();
-  const { data, error } = await db.from('budget_years').select('id, year, status').order('year', { ascending: false });
-  if (error) throw error;
-  return data || [];
 }
 
 // ---------------------------------------------------------------------
@@ -139,6 +144,17 @@ export async function insertRows(table, payloads) {
   try {
     const db = client();
     const { data, error } = await db.from(table).insert(payloads).select();
+    if (error) return { data: null, error };
+    return { data, error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+}
+
+export async function updateRow(table, id, payload) {
+  try {
+    const db = client();
+    const { data, error } = await db.from(table).update(payload).eq('id', id).select();
     if (error) return { data: null, error };
     return { data, error: null };
   } catch (err) {

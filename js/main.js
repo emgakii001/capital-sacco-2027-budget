@@ -1,5 +1,6 @@
 import { auth } from './core/auth.js';
 import { findByPath } from './core/nav.js';
+import { initYearContext } from './core/year-context.js';
 import { renderSidebar, wireSidebar } from './components/sidebar.js';
 import { renderHeader, wireHeader } from './components/header.js';
 import { renderLogin } from './pages/login.js';
@@ -47,7 +48,7 @@ let currentSession = null;
 
 function pathTitle(path) {
   const found = findByPath(path);
-  if (!found) return '2027 Budget Management System';
+  if (!found) return 'Budget Management System';
   return found.parent ? `${found.parent.label} · ${found.item.label}` : found.item.label;
 }
 
@@ -83,8 +84,22 @@ function updateActiveNav(path) {
   if (title) title.textContent = pathTitle(path);
 }
 
-function renderShell(session) {
+function updateHeader() {
+  const header = document.querySelector('.header');
+  const path = window.location.hash || '#/dashboard';
+  if (header) {
+    header.outerHTML = renderHeader({ title: pathTitle(path), user: currentSession?.user, isLive: auth.isLive });
+    wireHeader({
+      onLogout: async () => { await auth.signOut(); renderLoginScreen(); },
+      onMenuToggle: () => document.getElementById('shell')?.classList.toggle('drawer-open'),
+      onYearChange: () => { updateHeader(); renderRoute(window.location.hash || '#/dashboard'); },
+    });
+  }
+}
+
+async function renderShell(session) {
   currentSession = session;
+  await initYearContext();
   const path = window.location.hash || '#/dashboard';
   root.innerHTML = `
     <div class="shell" id="shell">
@@ -101,6 +116,7 @@ function renderShell(session) {
   wireHeader({
     onLogout: async () => { await auth.signOut(); renderLoginScreen(); },
     onMenuToggle: () => shellEl.classList.toggle('drawer-open'),
+    onYearChange: () => { updateHeader(); renderRoute(window.location.hash || '#/dashboard'); },
   });
 
   renderRoute(path);

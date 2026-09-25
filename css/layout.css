@@ -147,3 +147,13 @@
 @media (max-width: 560px) {
   .conn-pill { display: none; }
 }
+
+/* ---------- Year picker (header) ---------- */
+.year-picker { display: flex; align-items: center; gap: 6px; }
+.year-select.select { height: 34px; padding: 0 10px; font-size: 13px; min-width: 128px; background: var(--blue-50); border-color: transparent; color: var(--navy); font-weight: 600; }
+.year-picker .btn-sm { height: 34px; padding: 0 10px; }
+.add-year-label { display: inline; }
+@media (max-width: 700px) {
+  .add-year-label { display: none; }
+  .year-select.select { min-width: 92px; }
+}

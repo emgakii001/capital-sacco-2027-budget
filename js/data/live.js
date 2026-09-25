@@ -4,7 +4,7 @@
 // operating_budget, which is BUDGET data, not actuals. Budget totals per
 // branch come from operating_budget; actual totals per branch come from the
 // actuals table. They are never the same query.
-import { BUDGET_YEAR, loadRefData, listRows, safeNum } from '../core/db.js';
+import { loadRefData, listRows, safeNum } from '../core/db.js';
 import { isSupabaseConfigured } from '../core/supabase-client.js';
 
 export { MONTHS } from './branches.js';
