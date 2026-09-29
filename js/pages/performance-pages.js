@@ -2,6 +2,7 @@ import { icon } from '../core/icons.js';
 import { kes, escapeHtml } from '../core/format.js';
 import { isSupabaseConfigured } from '../core/db.js';
 import { loadYearData, sumByClass, monthlySeries, branchSeries, accountBudgetVsActual, variancePctLabel } from '../core/aggregates.js';
+import { coaHeadline, classOptions, classKey } from '../core/coa.js';
 import { renderBarChart, renderLineChart } from '../components/charts.js';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -27,7 +28,7 @@ export async function renderPerformanceOverview(container) {
   const body = pageShell(container, { icoName: 'performance', title: 'Performance Overview', lead: 'How the SACCO is performing against what was budgeted.' });
   if (!isSupabaseConfigured) return notConfigured(body);
 
-  const { error, budgetRows, actualRows, capexRows } = await loadYearData();
+  const { error, totals, budgetRows, actualRows, capexRows } = await loadYearData();
   if (error) { body.innerHTML = `<div class="banner banner-error">${icon('warn')}<div><strong>Unable to load data.</strong> ${escapeHtml(error)}</div></div>`; return; }
 
   const noBudget = (budgetRows || []).length === 0;
@@ -47,8 +48,10 @@ export async function renderPerformanceOverview(container) {
       </div></div>`;
   }
 
-  const income = { budget: sumByClass(budgetRows, 'Income'), actual: sumByClass(actualRows, 'Income') };
-  const expense = { budget: sumByClass(budgetRows, 'Expense'), actual: sumByClass(actualRows, 'Expense') };
+  const budgetHead = coaHeadline(budgetRows, totals);
+  const actualHead = coaHeadline(actualRows, totals);
+  const income = { budget: budgetHead.income, actual: actualHead.income };
+  const expense = { budget: budgetHead.expense, actual: actualHead.expense };
   const capexBudget = (capexRows || []).reduce((s, r) => s + (r.total_cost != null ? Number(r.total_cost) : (Number(r.quantity) || 0) * (Number(r.unit_cost) || 0)), 0);
 
   body.innerHTML = `
@@ -57,7 +60,7 @@ export async function renderPerformanceOverview(container) {
     <div class="ph-grid">
       ${block('Income', income.budget, income.actual, 'Achievement %')}
       ${block('Expenses', expense.budget, expense.actual, 'Utilization %')}
-      ${block('Surplus', income.budget - expense.budget, income.actual - expense.actual, null)}
+      ${block('Surplus', budgetHead.surplus, actualHead.surplus, null)}
       <div class="card"><div class="card-head"><h3>CAPEX</h3></div><div class="card-body">
         <div class="status-list">
           <li><span>Budget</span><span class="pill pill-muted">${kes(capexBudget)}</span></li>
@@ -88,7 +91,7 @@ export async function renderBudgetVsActual(container) {
         <div class="card-body">
           <div class="filters">
             <select class="select" id="bvaBranch"><option value="">Branch — All</option>${ref.branches.map((b) => `<option value="${b.id}">${escapeHtml(b.branch_code)} — ${escapeHtml(b.branch_name)}</option>`).join('')}</select>
-            <select class="select" id="bvaClass"><option value="">Account Class — All</option><option value="Income">Income</option><option value="Expense">Expense</option></select>
+            <select class="select" id="bvaClass"><option value="">Account Class — All</option>${classOptions(ref.accounts).map((o) => `<option value="${escapeHtml(o.key)}" ${classKey(filters.accountClass || '') === o.key && filters.accountClass ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}</select>
             <select class="select" id="bvaMonth"><option value="">Month — All</option>${ref.months.map((m) => `<option value="${m.id}">${escapeHtml(m.month_name)}</option>`).join('')}</select>
           </div>
           ${rows.length ? `<div class="table-wrap"><table class="data"><thead><tr><th>Account</th><th>Budget</th><th>Actual</th><th>Variance</th><th>Variance %</th></tr></thead>
@@ -125,9 +128,9 @@ export async function renderMonthlyPerformance(container) {
       </div>`;
     document.getElementById('mpBranch').addEventListener('change', (e) => { branchId = e.target.value; render(); });
     const incomeBudget = monthlySeries(budgetRows, 'Income', matches);
-    const expenseBudget = monthlySeries(budgetRows, 'Expense', matches);
+    const expenseBudget = monthlySeries(budgetRows, 'Expenses', matches);
     const incomeActual = monthlySeries(actualRows, 'Income', matches);
-    const expenseActual = monthlySeries(actualRows, 'Expense', matches);
+    const expenseActual = monthlySeries(actualRows, 'Expenses', matches);
     renderLineChart('mpChart', MONTH_LABELS, [
       { label: 'Income (Budget)', data: incomeBudget, color: '#0F766E' },
       { label: 'Income (Actual)', data: incomeActual, color: '#6EE7DB' },

@@ -115,16 +115,33 @@ export function monthIdByValue(ref, value) {
 // Generic list / insert wrappers. Errors are returned, not thrown, so
 // pages can render a proper error state instead of a blank screen.
 // ---------------------------------------------------------------------
+// Supabase/PostgREST silently caps a single response at 1,000 rows by default.
+// A full-year operating budget (16 branches x accounts x 12 months) is far
+// larger, so unless a limit is requested we page through the whole result.
+const PAGE_SIZE = 1000;
+
 export async function listRows(table, { select = '*', filters = [], order = null, limit = null } = {}) {
   try {
     const db = client();
-    let q = db.from(table).select(select);
-    filters.forEach(([col, op, val]) => { q = q[op](col, val); });
-    if (order) q = q.order(order.column, { ascending: order.ascending !== false });
-    if (limit) q = q.limit(limit);
-    const { data, error } = await q;
-    if (error) return { data: null, error };
-    return { data, error: null };
+    const build = () => {
+      let q = db.from(table).select(select);
+      filters.forEach(([col, op, val]) => { q = q[op](col, val); });
+      // Stable ordering is required for range paging to be reliable.
+      q = order ? q.order(order.column, { ascending: order.ascending !== false }) : q.order('id', { ascending: true });
+      return q;
+    };
+    if (limit) {
+      const { data, error } = await build().limit(limit);
+      return error ? { data: null, error } : { data, error: null };
+    }
+    const all = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await build().range(from, from + PAGE_SIZE - 1);
+      if (error) return { data: null, error };
+      all.push(...(data || []));
+      if (!data || data.length < PAGE_SIZE) break;
+    }
+    return { data: all, error: null };
   } catch (err) {
     return { data: null, error: err };
   }

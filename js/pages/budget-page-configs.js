@@ -2,6 +2,7 @@
 // All data-access, form-building, upload/template/guide/export behaviour
 // lives in crud-engine.js — this file only says how each table should look.
 import { kes } from '../core/format.js';
+import { classOptions } from '../core/coa.js';
 
 function distinctOptions(rows, key) {
   const seen = new Map();
@@ -19,7 +20,7 @@ function monthFilter() {
   return { key: 'month_id', label: 'Month', options: (ref) => ref.months.map((m) => ({ value: m.id, label: m.month_name })) };
 }
 function accountClassFilter() {
-  return { key: 'account_class', label: 'Account Class', options: () => [{ value: 'Income', label: 'Income' }, { value: 'Expense', label: 'Expense' }] };
+  return { key: 'account_class', label: 'Account Class', options: (ref) => classOptions(ref.accounts).map((o) => ({ value: o.label, label: o.label })) };
 }
 
 export const OPERATING_BUDGET_CFG = {

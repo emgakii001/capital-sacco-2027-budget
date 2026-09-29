@@ -1,16 +1,20 @@
-// Real data loader for the Dashboard.
+// Real data loader for the Dashboard — Supabase only, no fallbacks.
 //
-// FIX (see task): branch "actual" figures previously came from
-// operating_budget, which is BUDGET data, not actuals. Budget totals per
-// branch come from operating_budget; actual totals per branch come from the
-// actuals table. They are never the same query.
+// Operating Budget is the main consolidated budget:
+//   Total Income   = SUM of the COA "Total Income" record across all branches
+//   Total Expenses = SUM of the COA "Total Expenses" record across all branches
+// Detail and sub-total rows are never added together (that would double-count
+// the hierarchical Chart of Accounts). Account ids are resolved from the live
+// `accounts` table — see core/coa.js. Branch "actual" figures come from the
+// actuals table, never from operating_budget.
 import { loadRefData, listRows, safeNum } from '../core/db.js';
 import { isSupabaseConfigured } from '../core/supabase-client.js';
+import { resolveCoaTotals, missingTotalsMessage, coaHeadline, monthlyAccount, sumAccount } from '../core/coa.js';
 
 export { MONTHS } from './branches.js';
 
 const empty = () => ({
-  totalIncome: null, totalExpense: null, surplus: null, capex: null,
+  totalIncome: null, totalExpense: null, surplus: null, surplusNote: null, capex: null,
   status: null, monthlyIncome: null, monthlyExpense: null, branches: null,
   error: null,
 });
@@ -24,7 +28,7 @@ export async function loadDashboardData() {
     if (!ref.year) { result.status = 'Not found'; return result; }
     result.status = `${ref.year.year} — ${ref.year.status}`;
 
-    const accountClassById = Object.fromEntries(ref.accounts.map((a) => [a.id, a.account_class]));
+    const totals = resolveCoaTotals(ref);
 
     const [budgetRes, capexRes, actualsRes] = await Promise.all([
       listRows('operating_budget', {
@@ -36,41 +40,29 @@ export async function loadDashboardData() {
         filters: [['budget_year_id', 'eq', ref.year.id]],
       }),
       listRows('actuals', {
-        select: 'actual_amount, branch_id',
+        select: 'actual_amount, branch_id, account_id',
         filters: [['budget_year_id', 'eq', ref.year.id]],
       }),
     ]);
-    if (budgetRes.error || capexRes.error) { result.error = (budgetRes.error || capexRes.error).message; return result; }
+    const queryError = budgetRes.error || capexRes.error || actualsRes.error;
+    if (queryError) { result.error = queryError.message; return result; }
+    const totalsError = missingTotalsMessage(totals);
+    if (totalsError) { result.error = totalsError; return result; }
 
     const budgetRows = budgetRes.data || [];
     const capexRows = capexRes.data || [];
-    const actualRows = actualsRes.data || []; // actuals table may legitimately not exist yet / be empty — that's fine
+    const actualRows = actualsRes.data || [];
 
-    const monthlyIncome = Array(12).fill(0);
-    const monthlyExpense = Array(12).fill(0);
-    let totalIncome = 0, totalExpense = 0;
-    const budgetByBranch = {};
-
-    budgetRows.forEach((r) => {
-      const idx = (r.months?.month_number || 1) - 1;
-      const amt = safeNum(r.budget_amount);
-      const cls = accountClassById[r.account_id];
-      if (cls === 'Income') { totalIncome += amt; if (idx >= 0 && idx < 12) monthlyIncome[idx] += amt; }
-      else if (cls === 'Expense') { totalExpense += amt; if (idx >= 0 && idx < 12) monthlyExpense[idx] += amt; }
-      budgetByBranch[r.branch_id] = (budgetByBranch[r.branch_id] || 0) + amt;
-    });
-
-    const capex = capexRows.reduce((sum, r) => sum + (r.total_cost != null ? safeNum(r.total_cost) : safeNum(r.quantity) * safeNum(r.unit_cost)), 0);
-
-    const actualByBranch = {};
-    actualRows.forEach((r) => { actualByBranch[r.branch_id] = (actualByBranch[r.branch_id] || 0) + safeNum(r.actual_amount); });
-
-    result.totalIncome = totalIncome;
-    result.totalExpense = totalExpense;
-    result.surplus = totalIncome - totalExpense;
-    result.capex = capex;
-    result.monthlyIncome = monthlyIncome;
-    result.monthlyExpense = monthlyExpense;
+    const head = coaHeadline(budgetRows, totals);
+    result.totalIncome = head.income;
+    result.totalExpense = head.expense;
+    result.surplus = head.surplus;
+    result.surplusNote = head.surplusFromCoa
+      ? `COA ${totals.surplus.account_code} — ${totals.surplus.account_name}`
+      : 'Total Income − Total Expenses';
+    result.monthlyIncome = monthlyAccount(budgetRows, totals.income);
+    result.monthlyExpense = monthlyAccount(budgetRows, totals.expenses);
+    result.capex = capexRows.reduce((sum, r) => sum + (r.total_cost != null ? safeNum(r.total_cost) : safeNum(r.quantity) * safeNum(r.unit_cost)), 0);
     result.hasBudgetRows = budgetRows.length > 0;
     result.hasCapexRows = capexRows.length > 0;
     result.hasActualsRows = actualRows.length > 0;
@@ -78,14 +70,18 @@ export async function loadDashboardData() {
     result.branches = ref.branches
       .slice()
       .sort((a, b) => String(a.branch_code).localeCompare(String(b.branch_code)))
-      .map((b) => ({
-        code: b.branch_code,
-        name: b.branch_name,
-        budget: budgetByBranch[b.id] || 0,
-        // null (not 0) when there are genuinely no actuals rows for this branch,
-        // so the UI can say "No actual data" rather than implying KES 0 was recorded.
-        actual: Object.prototype.hasOwnProperty.call(actualByBranch, b.id) ? actualByBranch[b.id] : null,
-      }));
+      .map((b) => {
+        const mine = (r) => String(r.branch_id) === String(b.id);
+        const hasActual = actualRows.some((r) => mine(r) && String(r.account_id) === String(totals.income.id));
+        return {
+          code: b.branch_code,
+          name: b.branch_name,
+          budget: sumAccount(budgetRows, totals.income, mine),
+          // null (not 0) when the branch has no actual income record, so the UI
+          // can say "No actual data" rather than implying KES 0 was recorded.
+          actual: hasActual ? sumAccount(actualRows, totals.income, mine) : null,
+        };
+      });
 
     return result;
   } catch (err) {

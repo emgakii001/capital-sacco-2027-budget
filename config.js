@@ -15,5 +15,16 @@
  */
 window.APP_CONFIG = {
   SUPABASE_URL: "https://yyickwchmnxkybrsxopx.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_pW4h0Vd3UVKKPGQGyjWO-g_6vx3TzEv"
+  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_pW4h0Vd3UVKKPGQGyjWO-g_6vx3TzEv",
+
+  // Which existing Chart-of-Accounts records are the consolidation totals.
+  // These are account CODES (never database ids) and are looked up in the
+  // `accounts` table at run time. Consolidated figures are the SUM of these
+  // total records across branches — detail/sub-total rows are never added
+  // together. Leave a value blank to find that total by its account name.
+  COA_TOTALS: {
+    income: "110999",    // Total Income
+    expenses: "209000",  // Total Expenses
+    surplus: "209999"    // Ytd Profit/Loss A/C
+  }
 };

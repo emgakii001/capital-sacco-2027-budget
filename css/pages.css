@@ -21,7 +21,6 @@
 .stat-ico { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--teal-50); color: var(--teal); flex: none; }
 .stat.is-highlight .stat-ico { background: #fff; }
 .stat.is-secondary .stat-ico { background: #fff; color: var(--navy); }
-.stat-top .demo-tag { margin-left: auto; }
 .stat-value { font-size: clamp(23px, 2.3vw, 30px); font-weight: 600; color: var(--navy); letter-spacing: -0.01em; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .stat-value .unit { font-size: 13px; font-weight: 500; color: var(--text-2); margin-right: 8px; letter-spacing: 0; }
 .stat-value.is-negative { color: var(--error-ink); }
@@ -34,7 +33,6 @@
 .stat-lines dd { margin: 0; color: var(--navy); font-weight: 500; }
 .stat-lines { margin-bottom: 0; }
 
-.demo-tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; background: color-mix(in srgb, var(--warning) 16%, #fff); color: var(--warning-ink); font-size: 11.5px; font-weight: 600; letter-spacing: .02em; }
 
 .qa-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
 .qa {

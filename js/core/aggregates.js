@@ -1,8 +1,23 @@
 // Shared financial aggregation helpers, built on top of db.js. Performance,
-// Reports, Consolidated Budget and the Dashboard all read through here so
-// "Income = SUM operating_budget where account_class = Income" (etc.) is
-// defined exactly once.
+// Reports, Consolidated Budget and the Dashboard all read through here so the
+// consolidation rule is defined exactly once:
+//
+//   Total Income   = SUM of the COA "Total Income" record across the selected branches/months
+//   Total Expenses = SUM of the COA "Total Expenses" record across the selected branches/months
+//
+// The COA is hierarchical (detail -> sub-total -> total), so detail and
+// sub-total rows are never added together. See coa.js for how the total
+// accounts are resolved from the live `accounts` table.
 import { loadRefData, listRows, safeNum, safeDivide } from './db.js';
+import { classKey, resolveCoaTotals, missingTotalsMessage, sumAccount, monthlyAccount } from './coa.js';
+
+// The COA totals resolved by the most recent loadYearData().
+let activeTotals = { income: null, expenses: null, surplus: null, missing: ['Total Income', 'Total Expenses'] };
+export function getActiveTotals() { return activeTotals; }
+function totalAccountFor(cls) {
+  const k = classKey(cls);
+  return k === 'income' ? activeTotals.income : k === 'expense' ? activeTotals.expenses : null;
+}
 
 // Loads operating_budget and actuals for the current year, joined just
 // enough to know each row's branch, account, account_class and month.
@@ -11,6 +26,7 @@ import { loadRefData, listRows, safeNum, safeDivide } from './db.js';
 export async function loadYearData() {
   const ref = await loadRefData();
   if (!ref.year) return { ref, budgetRows: null, actualRows: null, capexRows: null, error: 'Budget year not found' };
+  activeTotals = resolveCoaTotals(ref);
 
   const [budgetRes, actualRes, capexRes] = await Promise.all([
     listRows('operating_budget', {
@@ -28,31 +44,30 @@ export async function loadYearData() {
   ]);
   const error = budgetRes.error || actualRes.error || capexRes.error;
   return {
-    ref, error: error ? error.message : null,
+    ref, totals: activeTotals,
+    error: error ? error.message : missingTotalsMessage(activeTotals),
     budgetRows: budgetRes.data || [], actualRows: actualRes.data || [], capexRows: capexRes.data || [],
   };
 }
 
 function classOf(row) { return row.accounts?.account_class; }
-function monthNumOf(row) { return row.months?.month_number; }
 
+// Consolidated total for a class ('Income' / 'Expense[s]'): the sum of that
+// class's COA total account. Optional filterFn narrows by branch / month.
 export function sumByClass(rows, matchClass, filterFn) {
-  return (rows || []).filter((r) => classOf(r) === matchClass).filter(filterFn || (() => true))
-    .reduce((s, r) => s + safeNum(r.budget_amount ?? r.actual_amount), 0);
+  return sumAccount(rows, totalAccountFor(matchClass), filterFn);
 }
 
 export function monthlySeries(rows, matchClass, filterFn) {
-  const out = Array(12).fill(0);
-  (rows || []).filter((r) => classOf(r) === matchClass).filter(filterFn || (() => true)).forEach((r) => {
-    const idx = (monthNumOf(r) || 1) - 1;
-    if (idx >= 0 && idx < 12) out[idx] += safeNum(r.budget_amount ?? r.actual_amount);
-  });
-  return out;
+  return monthlyAccount(rows, totalAccountFor(matchClass), filterFn);
 }
 
-export function branchSeries(rows, branches, filterFn) {
+// Per-branch figure for a class (default Income): that branch's own COA total.
+export function branchSeries(rows, branches, filterFn, matchClass = 'Income') {
+  const acct = totalAccountFor(matchClass);
   const byBranch = {};
-  (rows || []).filter(filterFn || (() => true)).forEach((r) => { byBranch[r.branch_id] = (byBranch[r.branch_id] || 0) + safeNum(r.budget_amount ?? r.actual_amount); });
+  (rows || []).filter((r) => acct && String(r.account_id) === String(acct.id)).filter(filterFn || (() => true))
+    .forEach((r) => { byBranch[r.branch_id] = (byBranch[r.branch_id] || 0) + safeNum(r.budget_amount ?? r.actual_amount); });
   return branches.map((b) => ({ code: b.branch_code, name: b.branch_name, value: byBranch[b.id] || 0, hasRows: Object.prototype.hasOwnProperty.call(byBranch, b.id) }));
 }
 
@@ -61,7 +76,7 @@ export function branchSeries(rows, branches, filterFn) {
 export function accountBudgetVsActual(budgetRows, actualRows, accounts, filters = {}) {
   const matchesFilters = (r) => (!filters.branchId || String(r.branch_id) === String(filters.branchId))
     && (!filters.monthId || String(r.month_id) === String(filters.monthId))
-    && (!filters.accountClass || classOf(r) === filters.accountClass)
+    && (!filters.accountClass || classKey(classOf(r)) === classKey(filters.accountClass))
     && (!filters.accountId || String(r.account_id) === String(filters.accountId));
 
   const budgetByAccount = {};

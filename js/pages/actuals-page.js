@@ -2,6 +2,7 @@ import { icon } from '../core/icons.js';
 import { kes, escapeHtml } from '../core/format.js';
 import { loadRefData, listRows, isSupabaseConfigured, safeNum } from '../core/db.js';
 import { renderCrudModule } from './crud-engine.js';
+import { resolveCoaTotals } from '../core/coa.js';
 import { ACTUALS_CFG } from './budget-page-configs.js';
 
 const MONTHS_ORDER = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -35,20 +36,23 @@ export async function renderActualsPage(container) {
     if (!ref.year) { summaryEl.innerHTML = `<div class="banner banner-error">${icon('warn')}<div>No budget year is selected. Add or select a budget year from the header first.</div></div>`; return; }
 
     const { data, error } = await listRows('actuals', {
-      select: 'actual_amount, month_id, account_id, months(month_number), accounts(account_class)',
+      select: 'actual_amount, month_id, account_id, months(month_number)',
       filters: [['budget_year_id', 'eq', ref.year.id]],
     });
     if (error) { summaryEl.innerHTML = `<div class="banner banner-error">${icon('warn')}<div>Unable to load actuals: ${escapeHtml(error.message)}</div></div>`; return; }
 
     const rows = data || [];
+    // Income / Expenses = the COA total records only (see core/coa.js).
+    const totals = resolveCoaTotals(ref);
+    if (totals.missing.length) { summaryEl.innerHTML = `<div class="banner banner-error">${icon('warn')}<div>The COA total account(s) for ${escapeHtml(totals.missing.join(' and '))} were not found in the accounts table. Check COA_TOTALS in config.js.</div></div>`; return; }
     const perMonth = Array.from({ length: 12 }, () => ({ count: 0, income: 0, expense: 0 }));
     rows.forEach((r) => {
       const idx = (r.months?.month_number || 1) - 1;
       if (idx < 0 || idx > 11) return;
       perMonth[idx].count += 1;
       const amt = safeNum(r.actual_amount);
-      if (r.accounts?.account_class === 'Income') perMonth[idx].income += amt;
-      else if (r.accounts?.account_class === 'Expense') perMonth[idx].expense += amt;
+      if (String(r.account_id) === String(totals.income.id)) perMonth[idx].income += amt;
+      else if (String(r.account_id) === String(totals.expenses.id)) perMonth[idx].expense += amt;
     });
 
     const lastEnteredIdx = perMonth.reduce((last, m, i) => (m.count > 0 ? i : last), -1);

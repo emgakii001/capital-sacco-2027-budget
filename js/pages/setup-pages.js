@@ -2,6 +2,7 @@ import { icon } from '../core/icons.js';
 import { escapeHtml } from '../core/format.js';
 import { listRows, insertRow, isSupabaseConfigured, resetRefCache } from '../core/db.js';
 import { openModal } from '../components/modal.js';
+import { classKey, classOptions } from '../core/coa.js';
 
 const WARNING = 'Setup controls information used throughout the budgeting and reporting system. Changes may affect budgets, actuals and reports.';
 
@@ -82,7 +83,7 @@ export async function renderSetupAccounts(container) {
   }
   function render() {
     const q = search.trim().toLowerCase();
-    const filtered = rows.filter((r) => (!classFilter || r.account_class === classFilter) && (!q || r.account_code.toLowerCase().includes(q) || r.account_name.toLowerCase().includes(q)));
+    const filtered = rows.filter((r) => (!classFilter || classKey(r.account_class) === classFilter) && (!q || r.account_code.toLowerCase().includes(q) || r.account_name.toLowerCase().includes(q)));
     body.innerHTML = `
       <div class="card">
         <div class="card-head"><div><h3>Chart of Accounts</h3><div class="sub">${filtered.length} of ${rows.length} account${rows.length === 1 ? '' : 's'}</div></div>
@@ -94,10 +95,10 @@ export async function renderSetupAccounts(container) {
         <div class="card-body">
           <div class="filters">
             <input class="input" style="width:220px" id="accSearch" placeholder="Search code or name…" value="${escapeHtml(search)}">
-            <select class="select" id="accClass"><option value="">Account Class — All</option><option value="Income" ${classFilter === 'Income' ? 'selected' : ''}>Income</option><option value="Expense" ${classFilter === 'Expense' ? 'selected' : ''}>Expense</option></select>
+            <select class="select" id="accClass"><option value="">Account Class — All</option>${classOptions(rows).map((o) => `<option value="${escapeHtml(o.key)}" ${classFilter === o.key ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}</select>
           </div>
           ${filtered.length ? `<div class="table-wrap"><table class="data"><thead><tr><th>Code</th><th>Account Name</th><th>Class</th></tr></thead>
-            <tbody>${filtered.map((r) => `<tr><td>${escapeHtml(r.account_code)}</td><td>${escapeHtml(r.account_name)}</td><td><span class="pill ${r.account_class === 'Income' ? 'pill-teal' : 'pill-muted'}">${escapeHtml(r.account_class)}</span></td></tr>`).join('')}</tbody></table></div>`
+            <tbody>${filtered.map((r) => `<tr><td>${escapeHtml(r.account_code)}</td><td>${escapeHtml(r.account_name)}</td><td><span class="pill ${classKey(r.account_class) === 'income' ? 'pill-teal' : 'pill-muted'}">${escapeHtml(r.account_class)}</span></td></tr>`).join('')}</tbody></table></div>`
             : `<div class="state"><div class="state-ico">${icon('accounts')}</div><h3>No accounts found</h3><p>${rows.length ? 'No accounts match your search.' : 'No accounts exist yet.'}</p></div>`}
         </div>
       </div>`;
@@ -108,7 +109,7 @@ export async function renderSetupAccounts(container) {
         title: 'Add Account', fields: [
           { key: 'account_code', label: 'Account Code', required: true },
           { key: 'account_name', label: 'Account Name', required: true },
-          { key: 'account_class', label: 'Account Class', required: true, type: 'select', options: ['Income', 'Expense'] },
+          { key: 'account_class', label: 'Account Class', required: true, type: 'select', options: (classOptions(rows).map((o) => o.label).length ? classOptions(rows).map((o) => o.label) : ['Income', 'Expenses']) },
         ],
         onSubmit: async (v) => {
           const { error } = await insertRow('accounts', v);

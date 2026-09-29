@@ -3,18 +3,15 @@ import { kes, compactKes, escapeHtml } from '../core/format.js';
 import { isSupabaseConfigured } from '../core/supabase-client.js';
 import { getSelectedYearLabel } from '../core/year-context.js';
 import { MONTHS } from '../data/branches.js';
-import { buildDemoDashboard } from '../data/demo.js';
 import { loadDashboardData } from '../data/live.js';
 
-const DEMO_KEY = 'csb_demo_toggle';
-
-function statCard({ icoName, label, value, note, tone, lines, demo }) {
+function statCard({ icoName, label, value, note, tone, lines }) {
   const cls = tone === 'highlight' ? ' is-highlight' : tone === 'secondary' ? ' is-secondary' : '';
   const valueCls = value === null || value === undefined ? ' is-empty' : (typeof value === 'string' ? ' is-text' : '');
   return `
     <div class="card stat${cls}">
-      <div class="stat-top">${icoName ? `<span class="stat-ico">${icon(icoName)}</span>` : ''}<span>${label}</span>${demo ? `<span class="demo-tag">Demo data</span>` : ''}</div>
-      <div class="stat-value num${valueCls}">${value === null || value === undefined ? 'Not yet connected' : value}</div>
+      <div class="stat-top">${icoName ? `<span class="stat-ico">${icon(icoName)}</span>` : ''}<span>${label}</span></div>
+      <div class="stat-value num${valueCls}">${value === null || value === undefined ? 'No data' : value}</div>
       ${note ? `<div class="stat-note">${note}</div>` : ''}
       ${lines ? `<dl class="stat-lines">${lines.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
     </div>`;
@@ -25,7 +22,6 @@ function quickAction(icoName, label, href) {
 }
 
 export function renderDashboard(container) {
-  const demoOn = localStorage.getItem(DEMO_KEY) === '1';
   const yearLabel = getSelectedYearLabel();
 
   container.innerHTML = `
@@ -35,13 +31,6 @@ export function renderDashboard(container) {
           <h2>${yearLabel ? `${yearLabel} Budget Dashboard` : 'Budget Dashboard'}</h2>
           <p>${yearLabel ? `A high-level view of the ${yearLabel} budget.` : 'Select or add a budget year in the header to see figures here.'} Use Budget, Actuals, Performance and Reports in the sidebar for full detail.</p>
         </div>
-        <div class="hero-side">
-          <label class="switch">
-            <input type="checkbox" id="demoToggle" ${demoOn ? 'checked' : ''}>
-            <span class="track"></span> Show demo data
-          </label>
-          <span class="hint">Off by default. Demo figures are for layout review only and are never stored.</span>
-        </div>
       </section>
 
       <div id="dashBody"><div class="dash-skel">
@@ -50,35 +39,27 @@ export function renderDashboard(container) {
       </div></div>
     </div>`;
 
-  const toggle = document.getElementById('demoToggle');
-  toggle.addEventListener('change', () => {
-    localStorage.setItem(DEMO_KEY, toggle.checked ? '1' : '0');
-    load();
-  });
-
   async function load() {
-    const useDemo = document.getElementById('demoToggle').checked;
-    const data = useDemo ? buildDemoDashboard() : await loadDashboardData();
-    renderBody(data, useDemo);
+    renderBody(await loadDashboardData());
   }
 
-  function renderBody(d, isDemo) {
+  function renderBody(d) {
     const body = document.getElementById('dashBody');
-    const noBudget = !isDemo && isSupabaseConfigured && d.hasBudgetRows === false;
+    const noBudget = isSupabaseConfigured && !d.error && d.hasBudgetRows === false;
 
     body.innerHTML = `
       <div class="page">
-        ${!isSupabaseConfigured && !isDemo ? `
-        <div class="banner banner-warn">${icon('warn')}<div><strong>Supabase is not yet connected.</strong> Add your project URL and publishable key to <code>config.js</code> to see live figures here, or switch on demo data above to preview the layout.</div></div>` : ''}
+        ${!isSupabaseConfigured ? `
+        <div class="banner banner-warn">${icon('warn')}<div><strong>Supabase is not connected.</strong> Add your project URL and publishable key to <code>config.js</code> to see live figures here.</div></div>` : ''}
         ${d.error ? `<div class="banner banner-error">${icon('warn')}<div><strong>Unable to load budget data.</strong> ${escapeHtml(d.error)} Please try again.</div></div>` : ''}
         ${noBudget ? `<div class="banner banner-teal">${icon('spark')}<div>No operating budget records have been entered yet for ${yearLabel ?? 'the selected year'}. Cards below will populate once data is added.</div></div>` : ''}
-        ${!isDemo && isSupabaseConfigured && !d.error && d.hasActualsRows === false ? `<div class="banner banner-teal">${icon('spark')}<div>No actual data has been entered yet for ${yearLabel ?? 'the selected year'}. Branch "Actual" figures will populate once actuals are recorded.</div></div>` : ''}
+        ${isSupabaseConfigured && !d.error && d.hasActualsRows === false ? `<div class="banner banner-teal">${icon('spark')}<div>No actual data has been entered yet for ${yearLabel ?? 'the selected year'}. Branch "Actual" figures will populate once actuals are recorded.</div></div>` : ''}
 
         <div class="stat-grid">
-          ${statCard({ icoName: 'consolidated', label: 'Total Budgeted Income', value: d.totalIncome != null ? kes(d.totalIncome) : null, demo: isDemo })}
-          ${statCard({ icoName: 'budget', label: 'Operating Expenses', value: d.totalExpense != null ? kes(d.totalExpense) : null, demo: isDemo })}
-          ${statCard({ icoName: 'performance', label: 'Budgeted Surplus', value: d.surplus != null ? kes(d.surplus) : null, tone: 'highlight', note: 'Total Income − Operating Expenses', demo: isDemo })}
-          ${statCard({ icoName: 'capex', label: 'CAPEX', value: d.capex != null ? kes(d.capex) : null, note: 'Quantity × Unit Cost, kept separate from operating expenses', demo: isDemo })}
+          ${statCard({ icoName: 'consolidated', label: 'Total Budgeted Income', note: 'Consolidated COA Total Income — all branches', value: d.totalIncome != null ? kes(d.totalIncome) : null })}
+          ${statCard({ icoName: 'budget', label: 'Total Operating Expenses', value: d.totalExpense != null ? kes(d.totalExpense) : null, note: 'Consolidated COA Total Expenses — all branches' })}
+          ${statCard({ icoName: 'performance', label: 'Budgeted Surplus', value: d.surplus != null ? kes(d.surplus) : null, tone: 'highlight', note: d.surplusNote })}
+          ${statCard({ icoName: 'capex', label: 'CAPEX', value: d.capex != null ? kes(d.capex) : null, note: 'Quantity × Unit Cost, kept separate from operating expenses' })}
           ${statCard({ icoName: 'setup', label: 'Budget Status', value: d.status || null, tone: 'secondary' })}
         </div>
 
@@ -98,28 +79,28 @@ export function renderDashboard(container) {
 
         <div class="card">
           <div class="card-head">
-            <div><h3>Monthly Budget Overview</h3><div class="sub">Income vs operating expenses, January–December${yearLabel ? ` ${yearLabel}` : ''}${isDemo ? ' — demo data' : ''}</div></div>
+            <div><h3>Monthly Budget Overview</h3><div class="sub">Income vs operating expenses, January–December${yearLabel ? ` ${yearLabel}` : ''}</div></div>
           </div>
           <div class="card-body">
             ${d.monthlyIncome ? `<div class="chart-box"><canvas id="monthlyChart" role="img" aria-label="Monthly income and expenses chart"></canvas></div>` : `
-            <div class="state"><div class="state-ico">${icon('performance')}</div><h3>Not yet connected</h3><p>Monthly figures will appear here once operating budget data is available for ${yearLabel ?? 'the selected year'}.</p></div>`}
+            <div class="state"><div class="state-ico">${icon('performance')}</div><h3>No data</h3><p>Monthly figures will appear here once operating budget data is available for ${yearLabel ?? 'the selected year'}.</p></div>`}
           </div>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <div><h3>Branch Overview</h3><div class="sub">All 16 branches${isDemo ? ' — demo data' : ''}</div></div>
+            <div><h3>Branch Overview</h3><div class="sub">All ${d.branches ? d.branches.length : 0} branches</div></div>
           </div>
           <div class="card-body">
             ${d.branches ? `<div class="branch-grid">${d.branches.map((b) => `
               <div class="branch">
                 <div class="branch-top"><span class="branch-code">${b.code}</span><span class="branch-name">${escapeHtml(b.name)}</span></div>
                 <dl>
-                  <div><dt>Budget</dt><dd>${compactKes(b.budget)}</dd></div>
-                  <div><dt>Actual</dt><dd>${b.actual != null ? compactKes(b.actual) : (isSupabaseConfigured && !isDemo ? 'No actual data' : 'Not connected')}</dd></div>
+                  <div><dt>Budget Income</dt><dd>${compactKes(b.budget)}</dd></div>
+                  <div><dt>Actual Income</dt><dd>${b.actual != null ? compactKes(b.actual) : 'No actual data'}</dd></div>
                 </dl>
               </div>`).join('')}</div>` : `
-            <div class="state"><div class="state-ico">${icon('branches')}</div><h3>Not yet connected</h3><p>Branch-level budget totals will appear here once data is available.</p></div>`}
+            <div class="state"><div class="state-ico">${icon('branches')}</div><h3>No data</h3><p>Branch-level budget totals will appear here once data is available.</p></div>`}
           </div>
         </div>
 

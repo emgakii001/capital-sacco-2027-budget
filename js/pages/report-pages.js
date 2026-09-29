@@ -1,7 +1,8 @@
 import { icon } from '../core/icons.js';
 import { kes, escapeHtml } from '../core/format.js';
 import { isSupabaseConfigured, listRows, safeNum } from '../core/db.js';
-import { loadYearData, sumByClass, branchSeries, accountBudgetVsActual, variancePctLabel } from '../core/aggregates.js';
+import { loadYearData, branchSeries, accountBudgetVsActual, variancePctLabel } from '../core/aggregates.js';
+import { coaHeadline } from '../core/coa.js';
 import { renderBarChart } from '../components/charts.js';
 import { downloadCsv } from '../core/csv.js';
 
@@ -49,13 +50,12 @@ export async function renderReportCentre(container) {
 export async function renderAnnualReport(container) {
   const body = pageShell(container, { icoName: 'reports', title: 'Annual Reports', lead: 'Total Income, Total Expenses, Budgeted Surplus and Total CAPEX for the year, with account-level detail.' });
   if (!isSupabaseConfigured) return notConfigured(body);
-  const { error, ref, budgetRows, capexRows } = await loadYearData();
+  const { error, ref, totals, budgetRows, capexRows } = await loadYearData();
   if (error) { body.innerHTML = `<div class="banner banner-error">${icon('warn')}<div>${escapeHtml(error)}</div></div>`; return; }
 
   const byAccount = {};
   (budgetRows || []).forEach((r) => { byAccount[r.account_id] = (byAccount[r.account_id] || 0) + safeNum(r.budget_amount); });
-  const income = sumByClass(budgetRows, 'Income');
-  const expense = sumByClass(budgetRows, 'Expense');
+  const { income, expense, surplus } = coaHeadline(budgetRows, totals);
   const capex = (capexRows || []).reduce((s, r) => s + (r.total_cost != null ? safeNum(r.total_cost) : safeNum(r.quantity) * safeNum(r.unit_cost)), 0);
   const rows = ref.accounts.filter((a) => byAccount[a.id]).map((a) => ({ a, total: byAccount[a.id] }));
 
@@ -63,7 +63,7 @@ export async function renderAnnualReport(container) {
     <div class="stat-grid">
       <div class="stat"><div class="stat-top">Total Income</div><div class="stat-value num">${kes(income)}</div></div>
       <div class="stat"><div class="stat-top">Total Expenses</div><div class="stat-value num">${kes(expense)}</div></div>
-      <div class="stat is-highlight"><div class="stat-top">Budgeted Surplus</div><div class="stat-value num">${kes(income - expense)}</div></div>
+      <div class="stat is-highlight"><div class="stat-top">Budgeted Surplus</div><div class="stat-value num">${kes(surplus)}</div></div>
       <div class="stat"><div class="stat-top">Total CAPEX</div><div class="stat-value num">${kes(capex)}</div></div>
     </div>
     <div class="card"><div class="card-head"><div><h3>Annual Budget by Account</h3></div>${exportBar('annual')}</div>
@@ -110,14 +110,16 @@ export async function renderMonthlyReport(container) {
 export async function renderBranchReport(container) {
   const body = pageShell(container, { icoName: 'reports', title: 'Branch Reports', lead: 'Budget and actual performance for a single branch.' });
   if (!isSupabaseConfigured) return notConfigured(body);
-  const { error, ref, budgetRows, actualRows } = await loadYearData();
+  const { error, ref, totals, budgetRows, actualRows } = await loadYearData();
   if (error) { body.innerHTML = `<div class="banner banner-error">${icon('warn')}<div>${escapeHtml(error)}</div></div>`; return; }
 
   let branchId = ref.branches[0]?.id ? String(ref.branches[0].id) : '';
   function render() {
     const matches = (r) => String(r.branch_id) === String(branchId);
-    const bi = { budget: sumByClass(budgetRows, 'Income', matches), actual: sumByClass(actualRows, 'Income', matches) };
-    const be = { budget: sumByClass(budgetRows, 'Expense', matches), actual: sumByClass(actualRows, 'Expense', matches) };
+    const bh = coaHeadline(budgetRows, totals, matches);
+    const ah = coaHeadline(actualRows, totals, matches);
+    const bi = { budget: bh.income, actual: ah.income };
+    const be = { budget: bh.expense, actual: ah.expense };
     const rows = accountBudgetVsActual(budgetRows, actualRows, ref.accounts, { branchId });
     body.innerHTML = `
       <div class="card"><div class="card-body">
@@ -128,8 +130,8 @@ export async function renderBranchReport(container) {
         <div class="stat"><div class="stat-top">Actual Income</div><div class="stat-value num">${kes(bi.actual)}</div></div>
         <div class="stat"><div class="stat-top">Budget Expenses</div><div class="stat-value num">${kes(be.budget)}</div></div>
         <div class="stat"><div class="stat-top">Actual Expenses</div><div class="stat-value num">${kes(be.actual)}</div></div>
-        <div class="stat is-highlight"><div class="stat-top">Budget Surplus</div><div class="stat-value num">${kes(bi.budget - be.budget)}</div></div>
-        <div class="stat is-highlight"><div class="stat-top">Actual Surplus</div><div class="stat-value num">${kes(bi.actual - be.actual)}</div></div>
+        <div class="stat is-highlight"><div class="stat-top">Budget Surplus</div><div class="stat-value num">${kes(bh.surplus)}</div></div>
+        <div class="stat is-highlight"><div class="stat-top">Actual Surplus</div><div class="stat-value num">${kes(ah.surplus)}</div></div>
       </div>
       <div class="card"><div class="card-head"><div><h3>Account Detail</h3></div>${exportBar('branch')}</div>
         <div class="card-body">${rows.length ? `<div class="table-wrap"><table class="data"><thead><tr><th>Account</th><th>Budget</th><th>Actual</th><th>Variance</th></tr></thead>
@@ -211,12 +213,14 @@ export async function renderFundingReport(container) {
 export async function renderManagementReport(container) {
   const body = pageShell(container, { icoName: 'reports', title: 'Management Report', lead: 'A combined summary for management review.' });
   if (!isSupabaseConfigured) return notConfigured(body);
-  const { error, ref, budgetRows, actualRows, capexRows } = await loadYearData();
+  const { error, ref, totals, budgetRows, actualRows, capexRows } = await loadYearData();
   if (error) { body.innerHTML = `<div class="banner banner-error">${icon('warn')}<div>${escapeHtml(error)}</div></div>`; return; }
   const { data: fundingRows } = await listRows('funding_budget', { select: 'amount_required, amount_funded' });
 
-  const income = { budget: sumByClass(budgetRows, 'Income'), actual: sumByClass(actualRows, 'Income') };
-  const expense = { budget: sumByClass(budgetRows, 'Expense'), actual: sumByClass(actualRows, 'Expense') };
+  const mb = coaHeadline(budgetRows, totals);
+  const ma = coaHeadline(actualRows, totals);
+  const income = { budget: mb.income, actual: ma.income };
+  const expense = { budget: mb.expense, actual: ma.expense };
   const capex = (capexRows || []).reduce((s, r) => s + (r.total_cost != null ? safeNum(r.total_cost) : safeNum(r.quantity) * safeNum(r.unit_cost)), 0);
   const noActuals = (actualRows || []).length === 0;
   const rows = accountBudgetVsActual(budgetRows, actualRows, ref.accounts, {});
@@ -229,7 +233,7 @@ export async function renderManagementReport(container) {
         <div class="stat-grid">
           <div class="stat"><div class="stat-top">Budgeted Income</div><div class="stat-value num">${kes(income.budget)}</div></div>
           <div class="stat"><div class="stat-top">Budgeted Expenses</div><div class="stat-value num">${kes(expense.budget)}</div></div>
-          <div class="stat is-highlight"><div class="stat-top">Budgeted Surplus</div><div class="stat-value num">${kes(income.budget - expense.budget)}</div></div>
+          <div class="stat is-highlight"><div class="stat-top">Budgeted Surplus</div><div class="stat-value num">${kes(mb.surplus)}</div></div>
           <div class="stat"><div class="stat-top">CAPEX</div><div class="stat-value num">${kes(capex)}</div></div>
         </div>
       </div></div>
